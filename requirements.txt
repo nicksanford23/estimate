@@ -1,0 +1,11 @@
+anthropic>=0.60
+pymupdf>=1.24
+pillow>=10.0
+torch>=2.2
+open_clip_torch>=2.24
+scikit-learn>=1.4
+numpy>=1.26
+joblib>=1.3
+tqdm>=4.66
+xgboost>=2.0
+psycopg2-binary>=2.9
