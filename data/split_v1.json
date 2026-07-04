@@ -1,0 +1,103 @@
+{
+  "version": "v1",
+  "seed": 42,
+  "rules": "v1: (1) any permit with >300 labeled pages is forced TRAIN (a whale can never be a fair eval packet -- rung-2b diagnosis: 26-12298-NEWC, 1059 pages, swinging 100%-eval collapsed finish_recall@0.5 from 0.974 to 0.339 on identical model code). (2) remaining permits: sha256(f'{seed}:{permit_num}')[:8] hex -> fraction of hash space; lowest 25% -> EVAL, rest -> TRAIN. (3) floors: eval must have >=8 permits and >=15 finish_plan+finish_schedule pages; if unmet after (2), the next-lowest-hash TRAIN permits that contain >=1 finish page are moved into eval (ascending hash order) one at a time until both floors hold. (4) FROZEN: this eval list is closed as of generation time -- any permit labeled AFTER this file was written is NOT in either list here, and downstream training code must default any permit not found in 'eval' to TRAIN (never grow or re-derive eval from a fresh permit list). Regenerating this file is the only way to change membership, and must be a deliberate act.",
+  "train": [
+    "13-44083-NEWC",
+    "13-44124-NEWC",
+    "13-44130-NEWC",
+    "14-00851-NEWC",
+    "14-03595-NEWC",
+    "14-17276-NEWC",
+    "15-08510-NEWC",
+    "15-19033-NEWC",
+    "16-17098-NEWC",
+    "16-38607-NEWC",
+    "17-35591-RNVS",
+    "19-00670-RNVS",
+    "19-21978-RNVS",
+    "19-24353-RNVS",
+    "19-27088-NEWC",
+    "19-37880-NEWC",
+    "22-26329-NEWC",
+    "22-37867-NEWC",
+    "24-35172-RNVS",
+    "25-10003-NEWC",
+    "25-10694-RNVS",
+    "25-11774-NEWC",
+    "25-15440-RNVS",
+    "25-19247-RNVS",
+    "25-25839-RNVS",
+    "25-39400-RNVS",
+    "26-12298-NEWC",
+    "26-14856-RNVN"
+  ],
+  "eval": [
+    "13-38849-NEWC",
+    "14-11290-NEWC",
+    "16-14565-NEWC",
+    "17-10173-NEWC",
+    "17-35150-NEWC",
+    "17-35590-RNVS",
+    "18-13316-RNVS",
+    "18-29543-RNVS",
+    "19-37120-RNVS",
+    "21-27441-NEWC",
+    "24-06233-RNVS",
+    "24-06748-RNVS",
+    "24-17262-NEWC",
+    "24-29895-RNVS",
+    "25-27326-RNVS",
+    "26-05332-NEWC"
+  ],
+  "stats": {
+    "train": {
+      "permits": 28,
+      "pages": 2191,
+      "finish_pages": 140
+    },
+    "eval": {
+      "permits": 16,
+      "pages": 725,
+      "finish_pages": 15
+    },
+    "total_permits": 44,
+    "total_pages": 2916,
+    "total_finish_pages": 155,
+    "whales_forced_train": [
+      {
+        "permit_num": "26-12298-NEWC",
+        "pages": 1059
+      }
+    ],
+    "moved_to_eval_to_meet_floors": [
+      {
+        "permit_num": "24-17262-NEWC",
+        "pages": 78,
+        "finish_pages": 1
+      },
+      {
+        "permit_num": "18-29543-RNVS",
+        "pages": 66,
+        "finish_pages": 3
+      },
+      {
+        "permit_num": "17-35150-NEWC",
+        "pages": 70,
+        "finish_pages": 3
+      },
+      {
+        "permit_num": "17-10173-NEWC",
+        "pages": 49,
+        "finish_pages": 1
+      },
+      {
+        "permit_num": "14-11290-NEWC",
+        "pages": 75,
+        "finish_pages": 1
+      }
+    ],
+    "floors_met": true,
+    "floors_exhausted_without_meeting": false
+  }
+}
