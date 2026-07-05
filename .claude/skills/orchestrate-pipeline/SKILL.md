@@ -29,8 +29,19 @@ with one query (`./scripts/db.sh`).
 
 ## Labeling waves (the drip system)
 1. Build assignment files (80 page ids per file, one per worker run) via
-   SQL: rendered ∩ unlabeled, ordered by priority — currently permits with
-   fewest labels first (diversity), previously finish-vocab docs (scarcity).
+   SQL: rendered ∩ unlabeled, ordered by PROJECT VALUE. Think per-permit,
+   never total pages. Priority formula (2026-07-05, Nick):
+   - GOLD BAND first: permits with 10-80 rendered pages (realistic tenant
+     build-outs/renos = product-matched; completable in part of one run)
+   - boost: permit description matches tenant|build-?out|interior|
+     renovation|restaurant|retail|suite, or finish vocab in doc text
+   - 1-9 page permits: allowed when cheap (keep-dense), ranked after gold
+     band, NEVER counted as eval packets (too easy an exam)
+   - >150-page mammoths: defer; if ever labeled, train-side only
+   - SIBLING RULE: when a completed permit yielded floor plans but ZERO
+     finish pages, check its other docs in the shared index (public.
+     documents filenames); if one matches interior|finish|ID set, queue
+     that single doc for download/render. No wholesale re-crawling.
    Files live in the session scratchpad; regenerate rather than reuse stale.
 2. Spawn `page-labeler` agents, one per file, prompt = file path + source
    tag. THROTTLE = how many run concurrently. Ask the user their credit
@@ -48,7 +59,22 @@ runs sweep from your spec → you run diagnose-model skill on results →
 name binding constraint → prescribe cheapest attack → update STATE.md →
 commit. Never skip a rung because a higher one "should" be better.
 
+## Changing the keep-list (when the user changes what matters)
+Labels are categories; keep is a derived list. So a keep-change is config,
+not relabeling: 1) edit the keep-set (one place per training script —
+KEEP_CATEGORIES); 2) regenerate targets + retrain (seconds, free);
+3) update the benchmark contract — decide per new class whether missing it
+is catastrophic (finish-tier: recall must be 1.0) or tolerable (recall
+target lower), and retune the threshold on the frozen split; 4) sanity:
+new keep classes need enough labeled examples (>50) and presence in eval;
+5) one row to the experiment log + STATE.md note + commit.
+Only if the user wants a distinction NOT captured by the 16 categories
+does the labeling factory get involved (new labels or a category split).
+
 ## Budget rules
+- When the orchestrator model is scarce (quota/window): an Opus agent runs
+  the diagnose-model skill on new results AND drafts the STATE.md update;
+  the orchestrator verifies in one short turn. Same for doc/report writing.
 - User's Sonnet credit is the labeling constraint — ask throttle level.
 - Orchestrator tokens are precious: outsource builds, keep replies tight,
   batch respawns into notification turns.

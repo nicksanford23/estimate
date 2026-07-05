@@ -73,6 +73,16 @@ Database: Neon Postgres, accessed ONLY via `scripts/db.sh "SQL"` (from
 /workspaces/estimate). It prints rows pipe-separated. Batch several INSERTs
 in one db.sh call. Never touch data/estimate.db (legacy).
 
+Scratch files: the scratchpad is SHARED between concurrent workers — never
+use generic names like ids.txt; suffix every temp file with your group name
+(e.g. ids_w6_02.txt) or it may be overwritten mid-run by a sibling.
+
+PAGE-IDENTITY GUARD (mixups have happened twice): when you batch pages via
+a lookup file, re-verify at INSERT time that the sheet_title you're writing
+came from the image belonging to THAT page_id (spot-check one pair per
+batch: re-SELECT image_path for the id and confirm it's the image you
+read). Never write a row from memory of "the previous page".
+
 Work in batches of 10. For each assigned page:
 1. `./scripts/db.sh "SELECT image_path FROM page WHERE id=<id>"` — then Read the image.
 2. INSERT (append-only — NEVER UPDATE/DELETE):

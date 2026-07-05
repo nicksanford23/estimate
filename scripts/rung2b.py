@@ -142,11 +142,30 @@ def task2_threshold_table(ctx):
               f"{_fmt(r['keep_recall']):>12} {_fmt(r['fp_rate']):>9} "
               f"{r['frac_kept']:>10.3f}")
     print("-" * 78)
-    print(f"exact tightest threshold for finish_recall==1.0 (min finish-page "
-          f"score in eval): {_fmt(exact_full_thr)}")
+
+    # augment the discrete grid with the exact continuous full-recall anchor
+    # point (min finish-page score) so (a)/(b) have a real answer even when no
+    # *grid* threshold happens to clear the bar.
+    cand_rows = list(rows)
+    if exact_full_thr is not None:
+        overall_x, _packet_x, _ = r1.compute_metrics(scores, cat_ev, permit_ev, exact_full_thr)
+        pred_x = scores >= exact_full_thr
+        cand_rows.append({
+            "thr": exact_full_thr, "finish_recall": overall_x["finish_recall"],
+            "keep_recall": overall_x["keep_recall"], "fp_rate": overall_x["fp_rate"],
+            "frac_kept": float(pred_x.mean()), "exact": True,
+        })
+        anchor = cand_rows[-1]
+        print(f"exact tightest threshold for finish_recall==1.0 (min finish-page "
+              f"score in eval): thr={exact_full_thr:.4f} -> "
+              f"finish_recall={_fmt(anchor['finish_recall'])} "
+              f"keep_recall={_fmt(anchor['keep_recall'])} "
+              f"fp_rate={_fmt(anchor['fp_rate'])} frac_kept={anchor['frac_kept']:.3f}")
+    else:
+        print("exact tightest threshold for finish_recall==1.0: NA (no finish pages in eval)")
 
     def best_at(min_recall):
-        cands = [r for r in rows
+        cands = [r for r in cand_rows
                  if r["finish_recall"] is not None and r["finish_recall"] >= min_recall - 1e-9]
         if not cands:
             return None

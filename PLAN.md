@@ -38,6 +38,18 @@ Per held-out plan set (split by PERMIT, never by document or page): recall of ke
 false positives tolerated. Threshold tuned to over-keep. Generic accuracy
 is meaningless at 17.7% keep rate.
 
+## Amendments (2026-07-05, from Nick's review)
+- Parallelize experiments, serialize conclusions: cheap independent rungs
+  may run concurrently; each experiment changes ONE variable. Skip a rung
+  only when it promises no new information, never to "go fancy" blind.
+- Production design: distilled model handles everything; pages below the
+  confidence bar escalate to a vision-LLM fallback (cents, seconds) — the
+  maker/checker pattern running live. Never LLM-for-every-page (margins).
+- Reviewer tier order: audit EVAL-split permits first — a wrong label in
+  the exam corrupts every leaderboard after it.
+- Next render batch: breadth over bulk — more permits, fewer pages each,
+  per-permit page cap. Largest-doc-per-permit heuristic caused the whale.
+
 ## Loop (once pilot passes)
 Label batch → retrain sweep → eval → diagnose worst mistakes → fix cause
 (labels/data/taxonomy) → repeat. Every experiment appends one row to
