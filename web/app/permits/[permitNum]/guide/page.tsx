@@ -33,6 +33,10 @@ const GUIDE_CSS = `
 .guide table td.bad{color:var(--bad);font-family:var(--font-mono);font-size:12.5px}
 .guide table td.pend{color:var(--muted);font-family:var(--font-mono);font-size:12.5px}
 .guide table tr.key td{background:var(--bad-bg)}
+.mdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.mdot.carpet{background:#2563a8}
+.mdot.ceramic-tile{background:#a06a2c}
+.mdot.resilient{background:#2f7d57}
 `;
 
 export default async function GuidePage({
@@ -127,6 +131,38 @@ export default async function GuidePage({
             <div className="bproduct">{m.product}</div>
           </div>
         ))}
+      </div>
+
+      {/* 3b. Rooms — the takeoff skeleton */}
+      <div className="section-title">Rooms — the takeoff skeleton ({g.rooms.length})</div>
+      <p className="sec-intro">
+        Every room with its floor material (read from the finish plan). The only thing missing is the{" "}
+        <b>SF</b> for each — fill that column and it becomes a priced takeoff.
+      </p>
+      <div className="tblwrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Room</th>
+              <th>Floor material</th>
+              <th className="m">SF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {g.rooms.map((r) => (
+              <tr key={r.num}>
+                <td className="m">{r.num}</td>
+                <td>{r.name}</td>
+                <td>
+                  <span className={`mdot ${r.material.replace(/\s/g, "-").toLowerCase()}`} />
+                  {r.material} ({r.code})
+                </td>
+                <td className="m" style={{ color: "var(--muted)" }}>— to measure</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* 4. Measurability */}
