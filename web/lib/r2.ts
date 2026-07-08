@@ -29,6 +29,15 @@ export async function presignPdf(docId: string): Promise<string> {
   );
 }
 
+export async function getPdfBytes(docId: string): Promise<Uint8Array> {
+  const r = await s3.send(
+    new GetObjectCommand({ Bucket: BUCKET, Key: `docs/${docId}.pdf` })
+  );
+  // aws-sdk v3 stream helper
+  return (r.Body as unknown as { transformToByteArray: () => Promise<Uint8Array> })
+    .transformToByteArray();
+}
+
 // Cached set of downloaded doc ids (the R2 bucket is the "downloaded" flag).
 let _set: Set<string> | null = null;
 let _ts = 0;

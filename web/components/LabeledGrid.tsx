@@ -39,6 +39,15 @@ export default function LabeledGrid({
           <span className="mono" style={{ color: "var(--muted)", fontSize: 13 }}>
             {pages.length} pages · {nkeep} flooring
           </span>
+          <a
+            className="btn primary"
+            href={`/api/kept-pdf/${docId}`}
+            target="_blank"
+            rel="noopener"
+            style={{ fontSize: 12.5 }}
+          >
+            📄 Flooring pages only (PDF)
+          </a>
         </div>
       </div>
 
