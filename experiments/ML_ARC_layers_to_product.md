@@ -141,8 +141,9 @@ while a 2-px gap stops a room closing — so we grade on rooms, not pixels.
 - Full corpus (2,329 downloaded PDFs = **150 unique permits**): **44 permits (29%)
   carry wall-named layers.** Of those, ~80–86% also carry door/furniture/finish
   layers → genuinely multi-class free labels.
-- Name-match is an upper bound; geometry-confirmed count: **_(verification pass
-  pending — will insert)_**.
+- Name-match is an upper bound; **geometry-confirmed: 27 of 44** (≥100 real wall
+  segs; 3 weak, 14 name-only) = **~18% of the 150 downloaded permits.** Confirmed
+  layers are standard AIA naming (A-WALL, I-WALL, E-WALL, WALL-EXIST) → generalizes.
 - Scaling headline: we've downloaded **150 of 12,106 permits**. At a 29% rate, the
   addressable free-training well is **~3,000+ permits** — constraint is download +
   verify, not availability.

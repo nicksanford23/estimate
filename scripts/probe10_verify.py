@@ -43,11 +43,12 @@ def has_wall_name(s3, doc_id):
         return False
 
 
-def best_wall_page(data):
-    """Return (max wall-seg count on any page, page_index, layers)."""
+def best_wall_page(data, page_cap=25):
+    """Return (max wall-seg count on any page, page_index, layers). Cap pages —
+    arch floor plans live near the front; bounds memory/time."""
     doc = fitz.open(stream=data, filetype="pdf")
     best = (0, -1, [])
-    for pi in range(doc.page_count):
+    for pi in range(min(doc.page_count, page_cap)):
         pg = doc[pi]
         pw = pg.rect.width
         n = 0; lays = set()
@@ -111,7 +112,7 @@ def main():
         except Exception:
             nseg, pi, lays = -1, -1, []
         return p, d, nseg, pi, lays
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         for p, d, nseg, pi, lays in ex.map(confirm, list(per_permit.items())):
             results.append((p, d, nseg, pi, lays))
             with lock, open(LOG, "a") as lg:
