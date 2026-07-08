@@ -197,6 +197,6 @@ a { color: inherit; text-decoration: none; }
 .lrow .cat { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lcell.keep .cat { color: var(--labeled); }
 .lrow .cf { color: var(--muted); }
-.ttl { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttl { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
 .lflags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .lfl { font-family: var(--font-mono); font-size: 9.5px; color: var(--labeled); background: var(--labeled-bg); border-radius: 4px; padding: 1px 5px; }
