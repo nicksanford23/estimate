@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Mechanical backbone of the triage-permits process. Per permit: scan signals
-(wall-centerline layers, floor-plan density, finish-schedule TEXT, CANDIDATE
-per-room SF), emit a PROVISIONAL tier + candidate schedule pages (rendered for the
-schedule-reader vision agent) + best wall page. Nothing here is final — TRUTH/GOLD
-are provisional until schedule-reader confirms; TRAIN until layers confirmed on a
-floor plan. Writes data/triage/results.jsonl. See skills/triage-permits.
+(wall-centerline segs on layer-classed linework, finish-schedule TEXT, CANDIDATE
+per-room SF regex, floor-plan presence from RESOLVED labels), emit a PROVISIONAL
+tier + candidate schedule pages (rendered for the schedule-reader vision agent) +
+best wall page. Nothing here is final — TRUTH/GOLD are provisional until
+schedule-reader confirms the AREA TYPE, and TRAIN until layers are confirmed as
+centerlines on a floor plan. APPEND-only output with run_id. See
+skills/triage-permits.
+
+NOTE: this is signal-based, not a floor-plan-density model — it uses resolved
+labels + wall-seg counts + schedule text/regex. Provisional tiers carry a "?".
+
 Usage: python3 triage.py [PERMIT ...]
 """
 import os, re, sys, json
+from datetime import datetime
 from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fitz
@@ -18,6 +25,8 @@ OUT = os.path.join(ROOT, "data", "triage"); os.makedirs(OUT, exist_ok=True)
 ROOMTOK = re.compile(r'^[A-Z]{0,2}-?\d{2,4}[A-Z]?$')
 SCHED_RE = re.compile(r"FINISH\s+SCHEDULE|ROOM\s+FINISH|ROOM\s+SCHEDULE", re.I)
 WALL_MIN = 200
+# resolved-label priority: adjudicated ruling wins, then review, then first pass
+LABEL_PRIORITY = {"claude-code-adjudicate": 3, "claude-code-review": 2, "claude-code": 1}
 
 
 def env():
@@ -30,7 +39,8 @@ def env():
 
 
 def sf_candidates(words):
-    """CANDIDATE per-room SF count (regex, over-fires — vision confirms)."""
+    """CANDIDATE per-room SF count (regex, OVER-FIRES on occupant-load/stray 'N SF'
+    — schedule-reader vision must confirm the area TYPE before trusting)."""
     rooms = [((w[1]+w[3])/2, w[4]) for w in words if ROOMTOK.match(w[4])]
     sf = []
     for w in words:
@@ -56,20 +66,34 @@ def wall_segs(pg):
     return n, sorted(lays)
 
 
-def triage(cur, s3, permit):
-    cur.execute("""SELECT d.onestop_doc_id od, p.page_index pi, pl.category
+def resolved_labels(cur, permit):
+    """One category per page, highest-priority source wins (adjudicate>review>first)."""
+    cur.execute("""SELECT d.onestop_doc_id od, p.page_index pi, pl.category, pl.source
         FROM estimate.document d JOIN estimate.page p ON p.document_id=d.id
         LEFT JOIN estimate.page_label pl ON pl.page_id=p.id
         WHERE d.permit_num=%s ORDER BY d.onestop_doc_id, p.page_index""", (permit,))
-    rows = cur.fetchall()
-    if not rows:
-        return dict(permit=permit, tier="NOT_INGESTED")
-    docs = defaultdict(list)
-    for r in rows: docs[r["od"]].append((r["pi"], r["category"]))
-    fp_pages = [(r["od"], r["pi"]) for r in rows if r["category"] == "floor_plan"]
+    best = {}   # (od,pi) -> (priority, category)
+    order = []
+    for r in cur.fetchall():
+        key = (r["od"], r["pi"])
+        if key not in best:
+            best[key] = (-1, None); order.append(key)
+        pr = LABEL_PRIORITY.get(r["source"], 0) if r["category"] else -1
+        if pr > best[key][0]:
+            best[key] = (pr, r["category"])
+    return [(od, pi, best[(od, pi)][1]) for (od, pi) in order]
 
-    best_wall = dict(segs=0, page=None, doc=None, layers=[])
-    sched_cands = []       # (doc, page) candidate finish-schedule pages
+
+def triage(cur, s3, permit, run_id):
+    rows = resolved_labels(cur, permit)
+    if not rows:
+        return dict(run_id=run_id, permit=permit, confirmed_tier="NOT_INGESTED")
+    docs = defaultdict(list)
+    for od, pi, cat in rows: docs[od].append((pi, cat))
+    fp_pages = [{"doc_id": od, "page_index": pi} for od, pi, cat in rows if cat == "floor_plan"]
+
+    best_wall = dict(segs=0, doc=None, page=None, layers=[])
+    sched_cands = []
     for od, pages in docs.items():
         try:
             pdf = download_pdf(s3, od); doc = fitz.open(pdf)
@@ -79,7 +103,7 @@ def triage(cur, s3, permit):
         for pi in wall_check[:15]:
             if pi >= doc.page_count: continue
             n, lays = wall_segs(doc[pi])
-            if n > best_wall["segs"]: best_wall = dict(segs=n, page=pi, doc=od, layers=lays[:3])
+            if n > best_wall["segs"]: best_wall = dict(segs=n, doc=od, page=pi, layers=lays[:3])
         for pi, c in pages:
             if pi >= doc.page_count: continue
             t = doc[pi].get_text()
@@ -87,7 +111,6 @@ def triage(cur, s3, permit):
                 sched_cands.append((od, pi))
         doc.close(); os.remove(pdf)
 
-    # render candidate schedule pages (dedup) for the schedule-reader vision agent
     rendered = []; seen = set()
     for od, pi in sched_cands:
         if (od, pi) in seen: continue
@@ -96,7 +119,7 @@ def triage(cur, s3, permit):
             pdf = download_pdf(s3, od); doc = fitz.open(pdf)
             path = os.path.join(OUT, f"{permit}_d{od}_p{pi}.png")
             doc[pi].get_pixmap(matrix=fitz.Matrix(2.3, 2.3), alpha=False).save(path)
-            rendered.append(dict(doc=od, page=pi, image=path))
+            rendered.append({"doc_id": od, "page_index": pi, "image": path})
             doc.close(); os.remove(pdf)
         except Exception:
             pass
@@ -104,34 +127,52 @@ def triage(cur, s3, permit):
     has_layers = best_wall["segs"] >= WALL_MIN
     has_fp = bool(fp_pages)
     has_sched_cand = bool(sched_cands)
-    if has_layers and has_sched_cand: prov = "GOLD?"
-    elif has_layers:                  prov = "TRAIN"
-    elif has_sched_cand:              prov = "TRUTH?"
-    elif has_fp:                      prov = "FLATTENED"
+    # PROVISIONAL tier ("?" = needs agent confirmation). Final tiers (skill):
+    # GOLD_ALIGNED / TRAIN_LAYERED / TRUTH_AREA / MATERIAL_ONLY / MODEL_TARGET / DISMISS
+    if has_layers and has_sched_cand: prov = "GOLD_ALIGNED?"
+    elif has_layers:                  prov = "TRAIN_LAYERED?"   # ? = confirm centerlines on floor plan
+    elif has_sched_cand:              prov = "TRUTH_AREA?"      # ? = schedule-reader confirms area TYPE
+    elif has_fp:                      prov = "MODEL_TARGET"
     else:                             prov = "DISMISS"
-    return dict(permit=permit, provisional_tier=prov, tier=None,
-                floor_plan_pages=[p for _, p in fp_pages], wall_page=best_wall,
-                schedule_candidates=rendered, confirmed_by=None,
-                note="TRUTH/GOLD pending schedule-reader; TRAIN pending layer-on-floorplan confirm")
+    needs = []
+    if "?" in prov and has_layers: needs.append("layer_centerline_on_floorplan_confirm")
+    if "?" in prov and has_sched_cand: needs.append("schedule_reader_area_type_confirm")
+    return dict(run_id=run_id, permit=permit, provisional_tier=prov, confirmed_tier=None,
+                tier_confidence="provisional", floor_plan_pages=fp_pages, wall_page=best_wall,
+                schedule_candidates=rendered, needs_agent=needs, failure_modes=[],
+                confirmed_by=None,
+                note="snapshot; PROVISIONAL — TRUTH/GOLD need schedule-reader area-type + "
+                     "layer-on-floorplan confirmation; measurement boundary (centerline vs "
+                     "inside-face) not yet applied")
 
 
 def main():
     import psycopg2, psycopg2.extras
     cur = psycopg2.connect(env()["NEON_DATABASE_URL"]).cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     s3 = r2_client()
+    run_id = datetime.now().strftime("%Y-%m-%dT%H-%M-%SZ")
     permits = sys.argv[1:] or ['17-35150-NEWC', '26-05332-NEWC', '23-05848-RNVS']
     recs = []
     for pn in permits:
-        r = triage(cur, s3, pn); recs.append(r)
-        if r.get("tier") == "NOT_INGESTED":
+        r = triage(cur, s3, pn, run_id); recs.append(r)
+        if r.get("confirmed_tier") == "NOT_INGESTED":
             print(f"{pn:<16} NOT_INGESTED"); continue
         w = r["wall_page"]
-        print(f"{pn:<16} {r['provisional_tier']:<11} fp={len(r['floor_plan_pages'])} "
-              f"walls={w['segs']}(p{w['page']} {w['layers']}) sched_cands={len(r['schedule_candidates'])}")
-    with open(os.path.join(OUT, "results.jsonl"), "w") as f:
+        print(f"{pn:<16} {r['provisional_tier']:<15} fp={len(r['floor_plan_pages'])} "
+              f"walls={w['segs']}(d{w['doc']} p{w['page']} {w['layers']}) "
+              f"sched_cands={len(r['schedule_candidates'])} needs={r['needs_agent']}")
+    # APPEND (never overwrite) — one line per (run_id, permit)
+    with open(os.path.join(OUT, "results.jsonl"), "a") as f:
         for r in recs: f.write(json.dumps(r) + "\n")
-    print(f"\nwrote {len(recs)} records -> data/triage/results.jsonl "
-          f"(+ candidate schedule PNGs for schedule-reader)")
+    # human-readable per-run summary
+    with open(os.path.join(OUT, f"run_{run_id}.md"), "w") as f:
+        f.write(f"# Triage run {run_id}\n\n| permit | provisional tier | walls | sched cands | needs |\n|---|---|---|---|---|\n")
+        for r in recs:
+            if r.get("confirmed_tier") == "NOT_INGESTED":
+                f.write(f"| {r['permit']} | NOT_INGESTED | | | |\n"); continue
+            f.write(f"| {r['permit']} | {r['provisional_tier']} | {r['wall_page']['segs']} | "
+                    f"{len(r['schedule_candidates'])} | {', '.join(r['needs_agent'])} |\n")
+    print(f"\nappended {len(recs)} records (run {run_id}) -> data/triage/results.jsonl + run_{run_id}.md")
 
 
 if __name__ == "__main__":

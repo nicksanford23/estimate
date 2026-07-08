@@ -30,19 +30,36 @@ For each room row you can read: room number, room name, floor material code
 Area column exists (else null). Read the printed values; do not invent. If the
 table is long, extract every row you can read; note if any are illegible.
 
+## Classify the AREA TYPE (critical — this is why you exist)
+A number followed by "SF" is NOT automatically flooring area. Set `truth_type`:
+- `room_area_schedule` — a room-finish/room schedule table with a per-room area column (validates geometry)
+- `finish_schedule_no_area` — a real room-finish table (materials) but NO area column (validates MATERIAL only)
+- `occupant_load_area` — egress/life-safety areas, often printed on a plan ("765 SF / PPSF")
+- `gross_area` / `leasing_area` — building/tenant/department totals, not per-room
+- `unknown`
+Only `room_area_schedule` supports the TRUTH_AREA tier; `finish_schedule_no_area`
+supports MATERIAL_ONLY. Everything else does NOT promote the permit.
+
 ## Return ONLY this JSON (no prose)
 ```json
 {
   "permit": "<permit>",
   "pages": [
     {
+      "doc_id": <int>,
       "page": <int>,
       "is_schedule": true|false,
+      "truth_type": "room_area_schedule|finish_schedule_no_area|occupant_load_area|gross_area|leasing_area|unknown",
+      "has_room_number": true|false,
+      "has_floor_material": true|false,
+      "has_base_material": true|false,
       "has_area_column": true|false,
-      "title": "<sheet title or table title, or null>",
+      "area_column_label": "<e.g. 'AREA', or null>",
+      "title": "<sheet/table title, or null>",
       "rooms": [ {"num":"101","name":"OFFICE","floor":"CPT-1","base":"RB-1","area":164} ],
       "total_sf": <sum of areas or null>,
-      "note": "<one short phrase — e.g. 'occupant-load callouts, not a schedule'>"
+      "confidence": 0.0-1.0,
+      "note": "<one short phrase — e.g. 'occupant-load callouts on a plan, not a schedule'>"
     }
   ]
 }
