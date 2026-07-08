@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPermit, CODE_LABEL, type DocRow } from "@/lib/queries";
+import { GUIDES } from "@/lib/guides";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +140,13 @@ export default async function PermitDetail({
               </div>
             ))}
         </div>
+        {GUIDES[decodeURIComponent(permitNum)] && (
+          <div style={{ marginTop: 16 }}>
+            <Link className="btn primary" href={`/permits/${encodeURIComponent(permitNum)}/guide`}>
+              📋 Takeoff Guide
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="section-title">
