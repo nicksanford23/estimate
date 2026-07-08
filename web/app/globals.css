@@ -109,6 +109,15 @@ a { color: inherit; text-decoration: none; }
 .more[open] > summary::before { content: "－ "; }
 .more[open] > summary { margin-bottom: 4px; }
 
+.dupgroup { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); overflow: hidden; }
+.dupgroup > summary { list-style: none; cursor: pointer; padding: 12px 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dupgroup > summary::-webkit-details-marker { display: none; }
+.dupgroup > summary::before { content: "▸"; color: var(--muted); font-size: 11px; }
+.dupgroup[open] > summary::before { content: "▾"; }
+.dupgroup > summary .nm { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dupgroup .doc-list { padding: 0 8px 10px; }
+.dupgroup .doc-row { border: none; border-top: 1px solid var(--line); border-radius: 0; }
+
 .permit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .permit-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; display: flex; flex-direction: column; gap: 6px; transition: border-color 0.12s, transform 0.12s; }
 .permit-card:hover { border-color: var(--accent); transform: translateY(-2px); }

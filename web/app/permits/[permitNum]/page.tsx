@@ -32,14 +32,27 @@ export default async function PermitDetail({
     ["Applied", str("applied_date")],
   ];
   const nDown = docs.filter((d) => d.downloaded).length;
-  const withFile = docs
-    .filter((d) => d.downloaded)
-    .sort(
-      (a, b) =>
-        Number(b.labeled) - Number(a.labeled) ||
-        (a.name ?? "").localeCompare(b.name ?? "")
-    );
-  const noFile = docs.filter((d) => !d.downloaded);
+  // The city stores repeat uploads as separate records with identical
+  // filenames (mostly inspection photos), so collapse documents by name.
+  const groupMap = new Map<string, DocRow[]>();
+  for (const d of docs) {
+    const key = (d.name ?? `Document ${d.doc_id}`).trim();
+    const arr = groupMap.get(key) ?? [];
+    arr.push(d);
+    groupMap.set(key, arr);
+  }
+  type Grp = { name: string; docs: DocRow[]; down: boolean; lab: boolean };
+  const groups: Grp[] = [...groupMap.entries()].map(([name, gd]) => ({
+    name,
+    docs: gd,
+    down: gd.some((d) => d.downloaded),
+    lab: gd.some((d) => d.labeled),
+  }));
+  const withFile = groups
+    .filter((g) => g.down)
+    .sort((a, b) => Number(b.lab) - Number(a.lab) || a.name.localeCompare(b.name));
+  const noFile = groups.filter((g) => !g.down).sort((a, b) => a.name.localeCompare(b.name));
+  const uniqueNames = groups.length;
 
   const Row = (d: DocRow) => (
     <div className="doc-row" key={d.doc_id}>
@@ -79,6 +92,31 @@ export default async function PermitDetail({
     </div>
   );
 
+  const groupRow = (g: Grp) => {
+    if (g.docs.length === 1) return Row(g.docs[0]);
+    const sorted = [...g.docs].sort(
+      (a, b) =>
+        Number(b.labeled) - Number(a.labeled) ||
+        Number(b.downloaded) - Number(a.downloaded)
+    );
+    return (
+      <details className="dupgroup" key={g.name}>
+        <summary>
+          <span className="nm">{g.name}</span>
+          <span className="chip">×{g.docs.length} copies</span>
+          {g.lab ? (
+            <span className="badge labeled">labeled</span>
+          ) : g.down ? (
+            <span className="badge downloaded">has file</span>
+          ) : null}
+        </summary>
+        <div className="doc-list" style={{ marginTop: 8 }}>
+          {sorted.map((d) => Row(d))}
+        </div>
+      </details>
+    );
+  };
+
   return (
     <main className="container">
       <Link href="/permits" className="back">
@@ -104,7 +142,7 @@ export default async function PermitDetail({
       </div>
 
       <div className="section-title">
-        Documents — {fmt(docs.length)} total · {fmt(nDown)} downloaded
+        Documents — {fmt(uniqueNames)} unique · {fmt(docs.length)} total · {fmt(nDown)} downloaded
       </div>
 
       {docs.length === 0 ? (
@@ -112,7 +150,7 @@ export default async function PermitDetail({
       ) : (
         <>
           {withFile.length > 0 ? (
-            <div className="doc-list">{withFile.map((d) => Row(d))}</div>
+            <div className="doc-list">{withFile.map((g) => groupRow(g))}</div>
           ) : (
             <div className="empty" style={{ padding: "24px 0" }}>
               No documents downloaded for this permit yet.
@@ -120,9 +158,9 @@ export default async function PermitDetail({
           )}
           {noFile.length > 0 && (
             <details className="more">
-              <summary>{fmt(noFile.length)} more documents (not downloaded)</summary>
+              <summary>{fmt(noFile.length)} more document names (not downloaded)</summary>
               <div className="doc-list" style={{ marginTop: 10 }}>
-                {noFile.map((d) => Row(d))}
+                {noFile.map((g) => groupRow(g))}
               </div>
             </details>
           )}
