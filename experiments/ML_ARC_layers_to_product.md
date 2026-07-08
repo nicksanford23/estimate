@@ -18,16 +18,33 @@ We've been grinding on this single project. Honest status **today**, no ML yet:
 | Rules geometry (Route A) | ~8–11 close cleanly; **dense service core fails** (proven, not tunable) |
 | **Its own CAD layers (Probe 7)** | **12 closed · 1 fragment · 5 merged · 0 no-polygon** |
 
-So even on the one file with *beautiful* layers, we get **~12 of 18 truly clean**,
-not 18/18. The remaining 5 are **merges** — two adjacent rooms whose shared wall
-didn't fully split them, so they polygonized into one blob. That's a **closure**
-problem, not a wall-detection problem.
+**Correction from Probe 11 (merge diagnosis):** 4 of the 5 "merges" are NOT bugs.
+Lobby+Tellers+Self-Service is one **open-plan banking floor** and Copy/Fax+Mortgage
+is open circulation — the architect drew *no wall* between them, so there's nothing
+to detect. Only ONE merge (Tellers↔Self-Service) is a real closure gap. So the true
+remaining defects are **two**: the 108 Conference fragment (interior clutter) + that
+one gap — not five. The merge count was mostly our **metric** being wrong
+(penalizing correct grouping of open space), not the tool failing.
 
-**Bottom line:** perfect-automatic is NOT here, even on the best-case file.
-- Layers took us from *"half, core impossible"* → *"most, a few merges."*
-- What IS essentially here: **assisted** takeoff — a human confirms the 5–6 hard
+**Bottom line:** perfect-automatic still isn't here, but the file is much healthier
+than "12/18" implied — **~12 enclosed rooms correct + open areas correctly grouped
++ 2 genuine defects.**
+- What IS essentially here: **assisted** takeoff — a human confirms the few hard
   rooms instead of drawing all 18.
-- The ML model below is what raises the auto-fraction; it is not trained/run yet.
+- **The open areas need a DIFFERENT signal — finish boundaries, not walls** (see
+  the pivot below). Chasing wall-closure there is a dead end.
+- The ML model below raises the auto-fraction; it is not trained/run yet.
+
+## The pivot (forced by Probe 11)
+1. **Metric:** total SF accuracy + enclosed-room correctness + material-zone
+   accuracy — NOT "every labeled room = its own polygon."
+2. **ML target = walls + FINISH boundaries** (not walls alone). Open commercial
+   space is divided by finish transitions, a signal the layers already carry.
+3. **Two-stage takeoff:** walls → enclosed rooms (works today); finish → subdivide
+   open areas into material zones.
+4. **Total SF is nearly usable now** (merges are harmless for area) → a
+   "total SF + material from finish tags" MVP doesn't need the ML.
+5. Building-type dependent — the pivot matters most for open-plan work.
 
 ---
 
