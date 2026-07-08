@@ -38,24 +38,34 @@ def main():
     print(f"scanning {len(rows)} schedule/life-safety pages across {len(bydoc)} docs...\n")
 
     s3 = r2_client()
-    hits = []
-    for od, pages in bydoc.items():
+    from concurrent.futures import ThreadPoolExecutor
+
+    def scan_doc(item):
+        od, pages = item
+        out = []
         try:
             data = s3.get_object(Bucket=BUCKET, Key=f"docs/{od}.pdf")["Body"].read()
-            if data[:5] != b"%PDF-": continue
+            if data[:5] != b"%PDF-": return out
             doc = fitz.open(stream=data, filetype="pdf")
         except Exception:
-            continue
+            return out
         for pi, cat, permit in pages:
             if pi >= doc.page_count: continue
             t = doc[pi].get_text()
-            areas = AREA_RE.findall(t)
+            vals = [float(a) for a in AREA_RE.findall(t) if 10 <= float(a) <= 5000]
             sched = bool(SCHED_RE.search(t))
-            # count DISTINCT plausible room areas (10-5000 SF)
-            vals = [float(a) for a in areas if 10 <= float(a) <= 5000]
             if len(vals) >= 4 or (sched and len(vals) >= 2):
-                hits.append((len(vals), sched, permit, pi, cat, sorted(set(round(v) for v in vals))[:12]))
+                out.append((len(vals), sched, permit, pi, cat, sorted(set(round(v) for v in vals))[:12]))
         doc.close()
+        return out
+
+    hits = []
+    done = 0
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        for res in ex.map(scan_doc, list(bydoc.items())):
+            hits.extend(res); done += 1
+            if done % 20 == 0:
+                print(f"  scanned {done}/{len(bydoc)} docs, candidates so far={len(hits)}", flush=True)
 
     hits.sort(reverse=True)
     print(f"{'#SF':>4} sched permit            page cat               sample areas")
