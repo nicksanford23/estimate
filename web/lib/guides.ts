@@ -86,8 +86,8 @@ export const GUIDES: Record<string, Guide> = {
       scale: true,
       dimensions: true,
       geometryCloses: false,
-      footprintFound: 364,
-      note: "Vector, scaled, and richly dimensioned — ideal inputs. The only failure is closing walls into rooms (footprint came out ~364 sq ft vs 7,090 recorded).",
+      footprintFound: 2719,
+      note: "Vector, scaled, richly dimensioned — ideal inputs. Rules-only closed ~364 SF; the CAD-layer approach gets 2,719 SF net. NB: 7,090 SF is the WHOLE building (Business 3,190 + Mercantile 3,900); we take off only the Business branch = 3,190 SF GROSS, so 2,719 net is ~-15%, the normal net-vs-gross gap. Per-room fragments remain (e.g. Vestibule 101).",
     },
   },
 };
