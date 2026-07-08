@@ -1,5 +1,6 @@
 import { q } from "./db";
 import { r2Set } from "./r2";
+import { KEEP_CATS } from "./labels";
 
 export const CODE_LABEL: Record<string, string> = {
   NEWC: "New construction",
@@ -230,7 +231,8 @@ export async function getLabeledDoc(docId: string) {
     .map((r) => ({
       pi: Number(r.pi),
       cat: String(r.cat),
-      keep: num(r.keep),
+      // derive keep from category (the stored keep flag is inconsistent)
+      keep: KEEP_CATS.has(String(r.cat)),
       conf: Number(r.conf),
       title: (r.title as string) ?? null,
       scale: num(r.sc),

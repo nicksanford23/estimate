@@ -1,4 +1,11 @@
 // Client-safe label maps (no server imports).
+export const KEEP_CATS = new Set([
+  "floor_plan",
+  "finish_plan",
+  "finish_schedule",
+  "demo_plan",
+]);
+
 export const CAT_LABEL: Record<string, string> = {
   floor_plan: "Floor plan",
   finish_plan: "Finish plan",

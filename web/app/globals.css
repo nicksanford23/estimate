@@ -118,6 +118,28 @@ a { color: inherit; text-decoration: none; }
 .dupgroup .doc-list { padding: 0 8px 10px; }
 .dupgroup .doc-row { border: none; border-top: 1px solid var(--line); border-radius: 0; }
 
+/* SF walkthrough */
+.wt-stages { display: flex; flex-direction: column; gap: 26px; margin-top: 8px; }
+.wt-stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 20px; }
+.wt-meta { margin-bottom: 14px; }
+.wt-n { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent-ink); letter-spacing: 0.06em; }
+.wt-stage h2 { font-size: clamp(17px, 2.4vw, 21px); font-weight: 700; margin: 4px 0 8px; }
+.wt-stage .wt-meta p { color: var(--muted); font-size: 15px; max-width: 72ch; margin: 0; }
+.wt-imgbtn { display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; cursor: zoom-in; position: relative; }
+.wt-imgbtn img { width: 100%; display: block; }
+.wt-zoomhint { position: absolute; right: 10px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: #fff; background: rgba(15,25,35,0.72); padding: 5px 10px; border-radius: 7px; }
+.wt-lesson { margin: 30px 0 60px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line)); border-radius: 14px; padding: 18px 20px; }
+.wt-lesson p { margin: 8px 0 0; font-size: 15px; max-width: 74ch; }
+
+.wt-lb { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: rgba(8, 12, 18, 0.97); }
+.wt-lb-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); color: #cdd6de; }
+.wt-lb-cap { font-family: var(--font-mono); font-size: 12.5px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt-lb-tools { display: flex; gap: 8px; }
+.wt-lb-tools button { font-family: var(--font-mono); font-size: 13px; background: rgba(255,255,255,0.09); color: #e6ecf1; border: 1px solid rgba(255,255,255,0.16); border-radius: 7px; padding: 6px 12px; cursor: pointer; min-width: 38px; }
+.wt-lb-tools button:hover { background: rgba(255,255,255,0.18); }
+.wt-lb-stage { flex: 1; overflow: auto; touch-action: pan-x pan-y; background: #fff; }
+.wt-lb-hint { padding: 8px; text-align: center; color: #8595a3; font-family: var(--font-mono); font-size: 11px; }
+
 .permit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .permit-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; display: flex; flex-direction: column; gap: 6px; transition: border-color 0.12s, transform 0.12s; }
 .permit-card:hover { border-color: var(--accent); transform: translateY(-2px); }
