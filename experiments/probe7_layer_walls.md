@@ -228,3 +228,33 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+---
+
+## Coverage reality check (added after testing 51 unique permits)
+
+`scripts/scan_layer_coverage.py` checked one floor plan from each of the **51
+unique permits** we've labeled. Result:
+
+| bucket | share | meaning |
+|---|---|---|
+| vector overall | 50/51 (98%) | only 1 scanned — good |
+| **kept named CAD layers** | **8/51 (16%)** | layer trick works, free + exact |
+| flattened to one blank layer | 42/51 (82%) | layer names destroyed at export; trick gives nothing |
+
+**The layer trick is real but NOT universal.** It worked perfectly on the
+Liberty Bank file, but ~82% of exports collapse every line onto a single unnamed
+layer (`''`), so there's no wall layer to grab. The clutter/wall separation is
+gone again for those.
+
+**Revised strategy (corrected):**
+1. **Detect + use layers where present (~1 in 6 files)** — free, exact.
+2. For the ~82% flattened files, we still need to *find* the walls → rules
+   (got ~half the rooms) + ML/vision for the rest.
+3. **The 16% layered files are a FREE labeled training set**: render the flat
+   version as input, take the wall layers as the answer, and train a wall-finder
+   that works on the flattened 82%. That is the highest-value use of the layered
+   files — they teach the model for the ones that lost their layers.
+
+So the layer discovery didn't remove the ML need — it **supplies the free labels
+that make the ML cheap.**
