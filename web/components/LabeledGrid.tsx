@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { CAT_LABEL } from "@/lib/labels";
 import type { LabeledPage } from "@/lib/queries";
+import ZoomViewer from "@/components/ZoomViewer";
 
 export default function LabeledGrid({
   docId,
@@ -17,50 +18,10 @@ export default function LabeledGrid({
 }) {
   const [keepOnly, setKeepOnly] = useState(false);
   const [open, setOpen] = useState<number | null>(null); // page_index being viewed
-  const [zoom, setZoom] = useState(1);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; y: number; l: number; t: number } | null>(null);
 
   const nkeep = pages.filter((p) => p.keep).length;
   const shown = keepOnly ? pages.filter((p) => p.keep) : pages;
   const current = open !== null ? pages.find((p) => p.pi === open) : null;
-
-  const openImg = (pi: number) => {
-    setZoom(1);
-    setOpen(pi);
-    document.body.style.overflow = "hidden";
-  };
-  const close = () => {
-    setOpen(null);
-    document.body.style.overflow = "";
-  };
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setZoom((z) => Math.min(8, Math.max(1, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
-  };
-  const onDown = (e: React.PointerEvent) => {
-    const s = stageRef.current;
-    if (!s) return;
-    drag.current = { x: e.clientX, y: e.clientY, l: s.scrollLeft, t: s.scrollTop };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onMove = (e: React.PointerEvent) => {
-    const s = stageRef.current;
-    if (!s || !drag.current) return;
-    s.scrollLeft = drag.current.l - (e.clientX - drag.current.x);
-    s.scrollTop = drag.current.t - (e.clientY - drag.current.y);
-  };
-  const onUp = () => {
-    drag.current = null;
-  };
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
 
   return (
     <>
@@ -81,9 +42,7 @@ export default function LabeledGrid({
         </div>
       </div>
 
-      <p className="hint">
-        Green = flooring page. Tap any page to open it full-size and zoom in.
-      </p>
+      <p className="hint">Green = flooring page. Tap any page to open it full-size and zoom in.</p>
 
       <div className="lab-grid">
         {shown.map((p) => {
@@ -99,7 +58,7 @@ export default function LabeledGrid({
               type="button"
               key={p.pi}
               className={`lcell ${p.keep ? "keep" : "drop"}`}
-              onClick={() => openImg(p.pi)}
+              onClick={() => setOpen(p.pi)}
             >
               <img loading="lazy" src={`/api/thumb/${docId}/${p.pi}`} alt={`page ${p.pi}`} />
               <div className="lcap">
@@ -126,37 +85,13 @@ export default function LabeledGrid({
       <div style={{ height: 50 }} />
 
       {current && (
-        <div className="wt-lb">
-          <div className="wt-lb-bar">
-            <span className="wt-lb-cap">
-              p{String(current.pi).padStart(2, "0")} · {CAT_LABEL[current.cat] ?? current.cat}
-              {current.title ? ` · ${current.title}` : ""}
-            </span>
-            <div className="wt-lb-tools">
-              <button onClick={() => setZoom((z) => Math.max(1, z / 1.4))}>−</button>
-              <button onClick={() => setZoom(1)}>fit</button>
-              <button onClick={() => setZoom((z) => Math.min(8, z * 1.4))}>+</button>
-              <button onClick={close}>✕ close</button>
-            </div>
-          </div>
-          <div
-            className="wt-lb-stage"
-            ref={stageRef}
-            onWheel={onWheel}
-            onPointerDown={onDown}
-            onPointerMove={onMove}
-            onPointerUp={onUp}
-            style={{ cursor: zoom > 1 ? "grab" : "zoom-in" }}
-          >
-            <img
-              src={`/api/pageimg/${docId}/${current.pi}`}
-              alt={`page ${current.pi}`}
-              draggable={false}
-              style={{ width: `${zoom * 100}%`, maxWidth: "none", display: "block", margin: "0 auto" }}
-            />
-          </div>
-          <div className="wt-lb-hint">scroll or ± to zoom · drag to pan · ✕ or Esc to close</div>
-        </div>
+        <ZoomViewer
+          src={`/api/pageimg/${docId}/${current.pi}`}
+          caption={`p${String(current.pi).padStart(2, "0")} · ${CAT_LABEL[current.cat] ?? current.cat}${
+            current.title ? ` · ${current.title}` : ""
+          }`}
+          onClose={() => setOpen(null)}
+        />
       )}
     </>
   );

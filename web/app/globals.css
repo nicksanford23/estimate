@@ -137,7 +137,7 @@ a { color: inherit; text-decoration: none; }
 .wt-lb-tools { display: flex; gap: 8px; }
 .wt-lb-tools button { font-family: var(--font-mono); font-size: 13px; background: rgba(255,255,255,0.09); color: #e6ecf1; border: 1px solid rgba(255,255,255,0.16); border-radius: 7px; padding: 6px 12px; cursor: pointer; min-width: 38px; }
 .wt-lb-tools button:hover { background: rgba(255,255,255,0.18); }
-.wt-lb-stage { flex: 1; overflow: auto; touch-action: pan-x pan-y; background: #fff; }
+.wt-lb-stage { flex: 1; overflow: auto; touch-action: none; background: #fff; overscroll-behavior: contain; }
 .wt-lb-hint { padding: 8px; text-align: center; color: #8595a3; font-family: var(--font-mono); font-size: 11px; }
 
 .permit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
