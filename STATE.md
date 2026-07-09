@@ -363,3 +363,64 @@ and `python3 scripts/pipeline.py board`.
 4. Hand-takeoffs ONLY on gate-passing permits + the 4 TRUTH_AREA schedule
    takeoffs (cheap, validates schedule path, produces guides/demos).
 5. Model 1: leave as byproduct; retrain at ~2x permit diversity.
+
+## Evening sprint results (2026-07-09, Fable session — probes 26-29, harness, audit)
+- TRUTH_AREA answer keys extracted (data/triage/truth_area/): 24-06233 (66
+  rooms/14,327 SF), 20-29653 (69/7,308), 24-06748 (36/5,055), 26-05332
+  (68/5,279) — all ±0.02% vs printed totals. First real grading truth.
+- FIX-GRADE LOOP, 3 turns vs those answer keys (rules path, 182 addressable
+  rooms): missed 71%->33%, median err (matched) 73%->31%, fabricated SF
+  18,759->4,004 (-79%), 37 cross-unit merge rooms now flagged guaranteed-wrong.
+  Dead ends documented: cheap blob re-split (0/59 — the gap-closer is the only
+  thing closing those regions); cavity shape filter caps ~31%.
+  Engines: scripts/geometry_v2/v3(/v4 in progress). Graders: probe26/27/28_regrade.
+  Canaries (bank p3 6->13 rooms, hotel 17-35590) held every turn.
+- probe25: geometric wall-classifier does NOT transfer across firms at 2-3
+  training permits (PR-AUC ~0.11 held-out vs 0.999 in-domain) — needs the
+  wider layered pile, not more features. Baseline to beat.
+- takeoff.py HARNESS (run/grade/scoreboard) committed: reproduces bank
+  bit-identical (1,178 SF) + 26-10321 (15 rooms/2,323 SF) via acceptance
+  tests; honest rules-path baseline on 24-06748. Probe 29 (running) adds
+  --engine v4 + proximity continuity fix.
+- FULL-CORPUS AUDIT (the "only 2 usable" check): harvest DONE across ~3,400
+  docs (local + 8vCPU pod $0.24/hr): 305 permits carry named wall layers,
+  984 candidate floor-plan pages. Closeability scoring on pod, ~1h; then
+  audit agent calibrates + writes data/triage/usable_layered_report.md.
+  Preliminary: ~27 permits pass a rough usable cut — "only 2" was a
+  labeled-slice artifact (Nick called it).
+- DISCOVERY: one-time full enumeration of all 9,216 unenumerated permits
+  running on its own pod ($0.06/hr, self-terminating), results streamed to
+  estimate.discovered_docs (NEW table, ours) every 60s. ~830 permits/6.8k
+  docs so far, ~11-16% plan-like. ETA ~2 days. Progress:
+  SELECT count(DISTINCT permit_num) FROM estimate.discovered_docs;
+- DOWNLOADS: priority 1-3 queue DRAINED (962 new PDFs, 452 permits, ~5GB,
+  scripts/select_batch.py + download_batch.py). Priority 4 (~8.5k docs)
+  deliberately deferred pending audit hit-rates.
+- Missing-plan verdicts: 24-06233 Bldgs A/D/F + 20-29653 units 1510A/1512
+  floor plans were NEVER FILED (doc-selector read every sibling filing) —
+  schedule-only rooms, cap geometric coverage, not our error.
+- OPS lessons: RunPod pods have python3=3.8 vs python3.11 w/ pip deps —
+  use python3.11 explicitly. "Pod created" != "pod working" — demand output
+  rows within 15 min. Session limits kill agents but detached scripts +
+  append-only files survive; resume via SendMessage.
+
+## Next Steps (2026-07-09 evening — the plan going forward)
+1. TONIGHT: audit report lands -> final usable-layered list (old vs new
+   corpus split). Probe 29 verdict -> takeoff.py default engine.
+2. ML TRAINING RUN v2 (next session): if usable+clean layered permits >= ~15
+   across firms, retrain the vector wall classifier (probe25 harness) on the
+   full pile; hold out >=5 permits; grade segment PR-AUC AND downstream
+   rooms-vs-truth via takeoff.py grade. GPU pod ~$1-2. Decision gate:
+   held-out downstream beats rules-path v4 on flattened permits -> promote.
+3. DOWNLOAD ROUND 2 from estimate.discovered_docs plan-like rows as the
+   crawl fills (same select/download scripts; regenerate candidates from
+   Neon, not the stale codex CSV).
+4. GOLDEN HUNT: scan_area_schedules over the 962 new docs + new arrivals ->
+   TRUTH_AREA candidates -> schedule-reader confirm -> grow answer-key set
+   (target >=10) and hunt the first GOLD_ALIGNED (layers + areas same plan).
+5. Takeoff sweep: takeoff.py run over every gate-passing permit -> scoreboard
+   -> per-permit guides (web) as demo inventory.
+6. Model 1 retrain on the enlarged multi-firm corpus (labels accrue from
+   triage byproduct); frozen split_v1 rules still apply.
+7. Playbook skill (before Fable window closes): encode the fix-grade loop,
+   engine ladder, pod ops, and decision gates so any driver continues.

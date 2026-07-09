@@ -35,7 +35,7 @@ from probe2_sf import r2_client, ENV
 CRASHED = OUT + ".crashed"
 SIZE_SKIP = 300 * 1024 * 1024  # skip any single PDF >300MB (log it)
 PER_DOC_TIMEOUT = 600          # seconds; a doc that can't scan in 10min is pathological
-WORKERS = 4                    # 2-core box, mostly network/parse; RAM is the limiter
+WORKERS = 6                    # fast-gate makes most docs I/O-bound; heavy docs still parse-bound
 _lock = threading.Lock()
 
 
@@ -87,9 +87,41 @@ def mark_crashed(doc_id, why):
 # ---------------------------------------------------------------- one-doc mode
 def one_doc_mode(doc_id, permit):
     """Child process: scan a single doc, print rows as CSV to stdout between
-    sentinels. scan() already swallows download errors (returns [])."""
-    rows = scan(dict(od=doc_id, pn=permit))
+    sentinels. scan() already swallows download errors (returns []).
+
+    FAST GATE (probe9's trick): a page's get_drawings() layer strings come
+    from the PDF's OCG dictionary, so if get_ocgs() has no wall-named layer,
+    no page can carry wall-layer linework — skip the expensive 60-page
+    get_drawings() walk entirely. ~85% of docs exit here in ~2s instead of
+    ~13s: the difference between a ~10h and a ~2-3h full-corpus pass."""
+    import fitz
+    from probe2_sf import r2_client, download_pdf
+    from probe7_layer_walls import WALL_RE
+
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS)
+    s3 = r2_client()
+    try:
+        pdf = download_pdf(s3, doc_id)
+    except Exception:
+        print("<<ROWS>>")   # missing/unreadable: empty result, parent marks seen
+        print("<<END>>")
+        return
+    try:
+        try:
+            doc = fitz.open(pdf)
+            has_wall_ocg = any(WALL_RE.search(v.get("name") or "")
+                               for v in doc.get_ocgs().values())
+            doc.close()
+        except Exception:
+            has_wall_ocg = True   # can't read OCGs -> fall through to full scan
+        # scan() re-uses the already-downloaded temp file (download_pdf caches
+        # by path) and removes it in its finally block.
+        rows = scan(dict(od=doc_id, pn=permit)) if has_wall_ocg else []
+    finally:
+        try:
+            os.remove(pdf)   # belt-and-braces for the no-wall fast path
+        except OSError:
+            pass
     print("<<ROWS>>")
     for r in rows:
         w.writerow(r)
