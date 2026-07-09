@@ -424,3 +424,20 @@ and `python3 scripts/pipeline.py board`.
    triage byproduct); frozen split_v1 rules still apply.
 7. Playbook skill (before Fable window closes): encode the fix-grade loop,
    engine ladder, pod ops, and decision gates so any driver continues.
+
+## AUDIT VERDICT (2026-07-09 ~21:02 UTC) — the "only 2 usable" question, answered
+- Full corpus (3,412 docs, coverage gap=0 verified): 305 permits carry named
+  wall layers; **148 permits pass the calibrated USABLE gate**
+  (125 pre-existing corpus + 23 from today's 962-doc go-wider batch).
+- Honest discount: mechanical gate has a known ~1-in-5 false-pass mode
+  (19-00670-type shredders are statistically identical to rooms) -> expect
+  ~110-120 truly usable after per-permit eyeballing. 53 borderline flagged.
+- WHY "only 2" was wrong (report §gate): (a) biased 75-permit labeled slice;
+  (b) the old scan used FIXED fpp=0.1 — under-closes small-scale drawings;
+  the bank's own ground-truth page scored n_mid=4/cov=0.086 under it. The
+  new gate sweeps fpp {0.05,0.1,0.2} + rep_flag layer-name rejection.
+- IMPLICATION: ML training gate (>=15 multi-firm layered permits) cleared
+  by ~an order of magnitude. Report copy committed at
+  experiments/audit_usable_layered_2026-07-09.md; live version + CSVs in
+  data/triage/. NEXT: eyeball-verify the 148 (vision agents, cheap),
+  then ML training run v2 per improvement-loop skill gates.
