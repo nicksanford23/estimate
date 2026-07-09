@@ -7,60 +7,60 @@ only as diagnostics.
 
 ## Headline
 
-- Raw Neon documents: 34978
-- Raw Neon permits represented by documents: 2589
+- Raw Neon documents: 35756
+- Raw Neon permits represented by documents: 2663
 - Download-run rows: 2272
 - Downloaded OK doc_ids in download_run: 2251
-- Working pipeline downloaded/rendered doc_ids in estimate.document: 104
-- R2 docs/<doc_id>.pdf objects matching raw Neon docs: 2260
-- Known downloaded/rendered union used for this report: 2260
+- Working pipeline downloaded/rendered doc_ids in estimate.document: 171
+- R2 docs/<doc_id>.pdf objects matching raw Neon docs: 2327
+- Known downloaded/rendered union used for this report: 2327
 - Non-OK/failed queued doc_ids in download_run: 21
-- Not downloaded OK yet: 32718 documents across 2561 permits
-- Never queued in download_run: 32596 documents across 2551 permits
+- Not downloaded OK yet: 33429 documents across 2634 permits
+- Never queued in download_run: 33307 documents across 2624 permits
 
 ## Permit-Level Download Status
 
-- Permits with at least one document in Neon: 2589
-- Permits with at least one known downloaded/rendered doc: 1054
-- Fully downloaded permits: 28
-- Partially downloaded permits: 1026
-- Not-started permits: 1535
+- Permits with at least one document in Neon: 2663
+- Permits with at least one known downloaded/rendered doc: 1095
+- Fully downloaded permits: 29
+- Partially downloaded permits: 1066
+- Not-started permits: 1568
 
 | permit_type | fully_downloaded | partially_downloaded | not_started | total_with_docs |
 |---|---:|---:|---:|---:|
-| NEWC | 6 | 526 | 614 | 1146 |
-| RNVN | 0 | 0 | 42 | 42 |
-| RNVS | 22 | 500 | 879 | 1401 |
+| NEWC | 6 | 532 | 613 | 1151 |
+| RNVN | 0 | 16 | 26 | 42 |
+| RNVS | 23 | 518 | 929 | 1470 |
 
 ## Undownloaded By Filename Type
 
 | doc_type | docs | permits |
 |---|---|---|
-| other_pdf | 13093 | 2355 |
-| non_pdf_or_message | 9262 | 1524 |
-| admin_pdf | 5206 | 1833 |
-| struct_civil_site_pdf | 2411 | 859 |
-| plan_like_arch_pdf | 1656 | 705 |
-| mep_fire_pdf | 1086 | 562 |
-| strict_finish_pdf | 2 | 2 |
-| interior_set_pdf | 2 | 2 |
+| other_pdf | 13356 | 2422 |
+| non_pdf_or_message | 9482 | 1565 |
+| admin_pdf | 5335 | 1885 |
+| struct_civil_site_pdf | 2455 | 877 |
+| plan_like_arch_pdf | 1690 | 733 |
+| mep_fire_pdf | 1109 | 579 |
+| strict_finish_pdf | 1 | 1 |
+| interior_set_pdf | 1 | 1 |
 
 ## Undownloaded By Permit Type
 
 | permit_type | docs | permits |
 |---|---|---|
-| NEWC | 17592 | 1140 |
-| RNVS | 14321 | 1379 |
-| RNVN | 805 | 42 |
+| NEWC | 17693 | 1145 |
+| RNVS | 14956 | 1447 |
+| RNVN | 780 | 42 |
 
 ## High-Priority Undownloaded Candidates
 
 | doc_type | docs | permits |
 |---|---|---|
-| other_pdf | 8459 | 1298 |
-| plan_like_arch_pdf | 1656 | 705 |
-| strict_finish_pdf | 2 | 2 |
-| interior_set_pdf | 2 | 2 |
+| other_pdf | 8576 | 1329 |
+| plan_like_arch_pdf | 1690 | 733 |
+| strict_finish_pdf | 1 | 1 |
+| interior_set_pdf | 1 | 1 |
 
 Priority definition:
 - 1: strict finish PDF filename
@@ -73,9 +73,7 @@ Priority definition:
 | permit | type | candidate_docs | examples |
 |---|---|---:|---|
 | 14-11290-NEWC | NEWC | 66 | 1381157:IW-2.1 Branch Finish Plan Liberty Bank Gentilly 06.30.14.pdf / 1381111:A-0.0 Cover Sheet Liberty Bank Gentilly 06.30.14.pdf / 1381112:A-0.1 Code Data Plan Liberty Bank Gentilly 06.30.14.pdf / +63 more |
-| 20-29653-RNVS | RNVS | 7 | 4941409:Finish schedule.pdf / 4941400:2nd floor reflected ceiling.pdf / 4941402:3rd floor reflected ceiling.pdf / +4 more |
-| 20-01153-RNVS | RNVS | 30 | 4623600:200914_CHNO B9_Interior Scope.pdf / 4513552:PLANS.pdf / 4513560:ELEVATION CERT.pdf / +27 more |
-| 25-21013-RNVN | RNVN | 6 | 8348102:250710-05 Interior Design.pdf / 8348100:250710-03 Architectural Demolition.pdf / 8348101:250710-04 Architectural.pdf / +3 more |
+| 19-13831-RNVS | RNVS | 8 | 4069361:1837 Magazine Interior build out Ramen Restaurant 5-31-19.pdf / 3956462:Engineering Plan - 1837 Magazine St Ste. B.pdf / 4114435:ZD Recorded Plans.pdf / +5 more |
 | 24-16993-NEWC | NEWC | 51 | 7299855:Survey and demo permit set.pdf / 7525646:Wilcox-Academy Daycare_ArchCOMCheck_08-29-24.pdf / 7951491:2723_Freret-floor Framing-Building-02_26_2025-24-16993-newc-C_M commer / +48 more |
 | 24-32750-NEWC | NEWC | 41 | 8491996:6325 Cromwell Pl Bldg A - first floor slab - 24-32750-NEWC.pdf / 8491997:6325 Cromwell Pl Bldg A 1st floor slab 9-1-25 NO 24-32750NEWC JH.pdf / 8517366:6325 Cromwell Pl Bldg A - first floor slab - 24-32750-NEWC (1).pdf / +38 more |
 | 16-18599-NEWC | NEWC | 38 | 2506479:Tenant build out plumbing drawings for reference only.pdf / 2372635:AR-16-008993-062020160436.pdf / 2372636:AR-16-008993-CautionaryCodes-062020160436.pdf / +35 more |
@@ -94,21 +92,23 @@ Priority definition:
 | 26-00820-NEWC | NEWC | 31 | 9027612:100-02 SITE PLAN - 15140-42 INTRACOASTAL.pdf / 8943389:Yard Building Erection Job Costs.pdf / 8944162:E3.pdf / +28 more |
 | 20-21014-RNVS | RNVS | 29 | 4647669:20-118 801 PATTERSON ELECTRICAL SET- E0.2-BUILDING ELECTRICAL PLAN S a / 4720115:801 Patterson - R.O.W. Trees Plan.pdf / 4721784:PKWY Approved ROW Tree Plan 1DEC2020.pdf / +26 more |
 | 14-17089-NEWC | NEWC | 28 | 1416059:14-17089_Public Works Approved site plan.pdf / 1471782:14-17089-NEWC_DPW Approved Site Plan.pdf / 1340760:14_0523_The Beacon_Permit Project Manual.pdf / +25 more |
+| 20-01153-RNVS | RNVS | 28 | 4513552:PLANS.pdf / 4513560:ELEVATION CERT.pdf / 4513575:PLANS BLDG 9.pdf / +25 more |
 | 24-16471-RNVS | RNVS | 28 | 7557938:333 N Diamond ROW Landscape Plan-PKWY APP.pdf / 7558219:333 N Diamond ROW Landscape Plan-PKWY APP (1).pdf / 7695616:240917_NOFD Plan Review 333 N Diamond St.pdf / +25 more |
 | 24-17262-NEWC | NEWC | 28 | 7531584:PLUMBING 2024-08-29 Millennium Place RISER PAGE 23 - Plan Check - P.pd / 7531616:MECHANICAL 2024-08-29 Millennium Place - Plan Check - M.pdf / 7561324:DPW Approved Site Plan.pdf / +25 more |
 | 24-24910-RNVS | RNVS | 28 | 7816101:3239_P301_PLUMB DETAILS Layout1 (1)_NH_MR.pdf / 7858965:3239_P301_PLUMB DETAILS Layout1 (1)_NH_MR (1).pdf / 7929278:Riverside Lofts - Plan Review Response.pdf / +25 more |
-| 25-09195-RNVN | RNVN | 28 | 8021831:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / 8021832:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / 8021833:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / +25 more |
-| 14-18929-NEWC | NEWC | 27 | 1584592:ISH-Site Plan-20141124.pdf / 1605758:Site Plan-DPW approved.pdf / 1353449:ISH_ARC Sight Line Studies.pdf / +24 more |
 | 16-20227-NEWC | NEWC | 27 | 2374587:1818 Carondelet elevation certificate.pdf / 2398984:1818 Carondelet St revised plot plan.pdf / 2356827:1818 Carondelet St benchmark calculations.pdf / +24 more |
 | 17-26365-NEWC | NEWC | 27 | 3955449:1824 CARONDELET ST. - FINAL FEMA FLOOD ELEVATION and SURVEY.pdf / 2952783:1822 Carondelet_Documents.pdf / 2952791:1822 Carondelet St pile load.pdf / +24 more |
 | 22-28198-NEWC | NEWC | 27 | 5746269:220701 Mazant Royal - Civil Permit Set.pdf / 5746270:220701 Mazant Royal - Electrical Permit Set.pdf / 5746271:220701 Mazant Royal - Fire Protection Permit Set.pdf / +24 more |
 | 23-02738-RNVS | RNVS | 27 | 5969688:Approved 2002 JOSEPHINE ST Plan.pdf / 6172740:2000-02 JOSEPHINE STREET-A1.pdf / 6172741:2000-02 JOSEPHINE STREET-A2.pdf / +24 more |
+| 25-09195-RNVN | RNVN | 27 | 8021831:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / 8021832:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / 8021833:250307_OMNI ROYAL ORLEANS_100 REVISED CONSTRUCTION DOCUMENTS_ARCHITECT / +24 more |
 | 13-14264-NEWC | NEWC | 26 | 982082:13-14264 APPROVED PLAN SET VOL 2.pdf / 982083:13-14264 APPROVED PLAN SET VOL 1.pdf / 826083:11028 BID PM Vol 1_compiled w_AIA Docs 130422.pdf / +23 more |
+| 14-18929-NEWC | NEWC | 26 | 1584592:ISH-Site Plan-20141124.pdf / 1605758:Site Plan-DPW approved.pdf / 1353449:ISH_ARC Sight Line Studies.pdf / +23 more |
 | 16-34101-NEWC | NEWC | 25 | 3694627:15031_FABC_Paving Plan.pdf / 2512468:FABC - Specifications - 8.4.16.pdf / 2521114:2- FABC Landscape.pdf / +22 more |
 | 25-09220-NEWC | NEWC | 25 | 8493141:2401301-Esplanade-Dellile Apartments_Elec.pdf / 8493142:2401301-Esplanade-Dellile Apartments_Mech.pdf / 8544650:2025.09.16 - Esplanade-Dellile Apartments - Permit Comments LCG Respon / +22 more |
-| 25-17248-RNVS | RNVS | 25 | 8660868:615 Baronne - Plan Review Response - 2025.11.03.pdf / 8232884:615 Baronne Street - ARC Package 1 - 2025.06.06.pdf / 8645860:615 Baronne Street - Compiled 100 CDs - 2025.10.25Part-1.pdf / +22 more |
 | 18-12867-NEWC | NEWC | 24 | 6123371:3321 St. Charles framing (partial on 1st floor) 18-12867-newc cm 05-04 / 6123373:3321_St._Charles-Framing partial 1st floor-05_04_2023-18-12867-newc-C_ / 3364880:McD St. Charles Ave.- HDLC submit 4-17-18.pdf / +21 more |
 | 19-00670-RNVS | RNVS | 24 | 4924051:SWMP Plan set 04-21-21 SENT.pdf / 5005793:A1.0 Title 6_9_21.pdf / 5011413:A5.0 Cross Section 6_11_21.pdf / +21 more |
 | 22-18919-NEWC | NEWC | 24 | 5589748:2256 Baronne_Storm Water Management Plan.pdf / 5592078:2256 Baronne_Storm Water Management Plan (1).pdf / 5592080:2256 Baronne_Civil Drawings.pdf / +21 more |
 | 13-27145-NEWC | NEWC | 23 | 926984:ITEM 3 - MULTI-PURPOSE PLAN.pdf / 864170:8012 Oak St.pdf / 864185:- 0 StAndrew ProjManual.pdf / +20 more |
 | 14-06082-NEWC | NEWC | 23 | 1187746:Attachment 5 Revised M-1 Floor Plan - HVAC-Layout.pdf / 1809668:Approved stamped plans for construction.pdf / 1126113:Final Report.pdf / +20 more |
+| 18-31705-RNVS | RNVS | 23 | 3621830:Old Gentilly Hwy 14601 (Folgers Loadout Bldg-Elevation Certificate.pdf / 3629604:SWMP - Plan.pdf / 3654428:Electrical Plans.pdf / +20 more |
+| 19-27652-NEWC | NEWC | 23 | 4175428:_08 29 19 Construction Set ARCHITECTURAL and MEP_Part1.pdf / 4175429:_08 29 19 Construction Set ARCHITECTURAL and MEP_Part2.pdf / 4175430:_08 29 19 Construction Set ARCHITECTURAL and MEP_Part3.pdf / +20 more |

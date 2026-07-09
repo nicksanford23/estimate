@@ -17,18 +17,25 @@ We've been grinding on this single project. Honest status **today**, no ML yet:
 |---|---|
 | Rules geometry (Route A) | ~8–11 close cleanly; **dense service core fails** (proven, not tunable) |
 | **Its own CAD layers (Probe 7)** | **12 closed · 1 fragment · 5 merged · 0 no-polygon** |
+| **Product-state read (Probe 23)** | **10 auto-quantity · 2 geometry review · 1 redraw/correct · 5 open-zone split** |
 
-**Correction from Probe 11 (merge diagnosis):** 4 of the 5 "merges" are NOT bugs.
+**Correction from Probe 11 (merge diagnosis):** most of the "merges" are NOT bugs.
 Lobby+Tellers+Self-Service is one **open-plan banking floor** and Copy/Fax+Mortgage
-is open circulation — the architect drew *no wall* between them, so there's nothing
-to detect. Only ONE merge (Tellers↔Self-Service) is a real closure gap. So the true
-remaining defects are **two**: the 108 Conference fragment (interior clutter) + that
-one gap — not five. The merge count was mostly our **metric** being wrong
+is open circulation — the architect drew *no wall* between them, so wall detection
+cannot split them. The merge count was mostly our **metric** being wrong
 (penalizing correct grouping of open space), not the tool failing.
 
+**Correction from Probe 23 (product-state diagnostic):** the right scorecard is
+not "one closed polygon per room label." The bank should be scored by product
+action: `auto_quantity`, `geometry_review`, `vision_correct_or_redraw`, or
+`open_zone_split`. The three rooms needing targeted attention are 101, 109, and
+114; Probe 17 found no nearby missing-wall gap for them, so the fixes are
+storefront/door semantics, doorway review, and service-core/corridor zoning.
+
 **Bottom line:** perfect-automatic still isn't here, but the file is much healthier
-than "12/18" implied — **~12 enclosed rooms correct + open areas correctly grouped
-+ 2 genuine defects.**
+than "12/18" implied — **10 enclosed rooms auto-quantity, 5 open-plan labels need
+finish/material splitting, 2 need geometry review, and 1 needs vision correction
+or redraw.**
 - What IS essentially here: **assisted** takeoff — a human confirms the few hard
   rooms instead of drawing all 18.
 - **The open areas need a DIFFERENT signal — finish boundaries, not walls** (see

@@ -29,7 +29,8 @@ Cheapest: parse scale notes ("1/8\" = 1'-0\"") from pagetext + the
 dimension-string cross-check. Pure code, zero ML, zero new labels.
 
 ## Stage 4 — Room boundaries (the moonshot, now just a stage)
-Decision: propose room polygons the user accepts/adjusts vs draws.
+Decision: propose room/zone geometry and the right product action for each label:
+auto quantity, review geometry, redraw/correct, or split an open zone.
 Done v0: ≥70% of rooms auto-proposed on vector plans, median area error
 <2%, ZERO confident-but-wrong (silent bid error is the one unforgivable
 failure — suppress low-confidence proposals entirely).
@@ -37,6 +38,10 @@ Route A (first): vector geometry — walls are line segments IN the PDF;
 extract (fitz get_drawings on ORIGINAL PDFs, never rendered PNGs), filter
 wall candidates, close door gaps, polygonize, area = geometry × stage-3
 scale. ML only for "which lines are walls," rules first.
+Scoring: do not grade "every room label has its own closed polygon." Open-plan
+rooms may correctly share a polygon. Grade the product action instead: enclosed
+room correctness, review recall for likely-wrong rooms, open-zone split quality,
+and total SF sanity.
 Route B (scans, later): segmentation model; polygon labels via the same
 labeling factory + reviewer tier. Not before Route A has a verdict.
 First probe (cheap, do before any building): extract drawings from 5
@@ -44,12 +49,15 @@ labeled floor_plan pages — do wall lines exist as clean segments, or are
 sets flattened? This one stat decides Route A's ceiling.
 
 ## Stage 5 — Attach finishes to rooms
-Decision: which flooring material does each room get?
+Decision: which flooring material does each enclosed room or open zone get?
 Done: ≥90% of rooms matched to schedule rows on docs that have schedules.
 Cheapest: extract the finish-schedule table (rows: room → floor/base) and
 join on room number/name from stage 4 polygons' text labels. Table
 extraction = LLM-assisted at first (low volume, keep-pages only), distilled
 later exactly like page classification was.
+Open-plan caveat: some commercial areas are divided by finish boundaries, not
+walls. Those labels should flow from Stage 4 as `open_zone_split`, then Stage 5
+uses finish tags/layers/schedules to split the blob into material zones.
 
 ## Stage 6 — Quantities and the estimate
 Decision: SF per material (+ base LF, waste factors) per area.

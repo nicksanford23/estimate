@@ -26,3 +26,7 @@ dimensions independently converge to a few percent on clean rooms. CAVEAT:
 "validated" = two independent ESTIMATES agree, NOT checked vs a true SF schedule
 (the bank has none). Strong evidence, not proof. The failures are exactly the known
 hard cases (fragment + open plan), not the closed rooms.
+
+Follow-up: Probe 23 reframes these counts as product actions: 10 auto-quantity,
+2 geometry-review, 1 vision-correct/redraw, and 5 open-zone split. That is the
+scorecard to carry forward.

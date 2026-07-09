@@ -245,7 +245,7 @@ Design: PLAN.md. Rules: CLAUDE.md. Then flywheel; later room-boundary moonshot.
   4 overlay PNGs (2 best, 2 worst; rest deleted after grading). Script:
   scripts/probe3_sf.py (new, imports probe2_sf.py/probe2b_sf.py unmodified).
 
-## Next Steps
+## Next Steps (07-05 list — SUPERSEDED by the 07-09 section at bottom)
 1. Resume wave 8 on Nick's go (same pattern as wave 7).
 2. Retrain on frozen split with 3-way threshold selection once new
    complete permits accumulate; report per-packet numbers.
@@ -280,3 +280,86 @@ run live, speed-is-core-tenet added to CLAUDE.md.
   merge detector AND the confidence signal.
 - Artifacts: scripts/probe_vector_walls.py, probe2_sf.py, probe2b_sf.py,
   probe3_sf.py; data/probe1..3/. Skill: sf-extraction. Agent: sf-prober.
+
+## CATCH-UP: the 07-08 SF sprint, probes 4-24 + triage system (written 07-09)
+STATE.md was NOT updated during the 07-08 sprint (~25 commits + a pile of
+uncommitted work). This section reconciles. Detail lives in experiments/*.md,
+experiments/ML_ARC_layers_to_product.md, SF_TRIAGE_PROCESS_CODEX_REVIEW_V2.md,
+and `python3 scripts/pipeline.py board`.
+
+### SF arc (probes 4-24), compressed
+- Probes 4-6: rules geometry on dense interiors is a dead end (negative
+  results, gap-closing sweeps disproved the gap hypothesis).
+- Probe 7 UNLOCK: CAD layers. Wall-named layers -> clean geometry -> rooms
+  close. Probe 8: layers double as FREE multi-class training labels
+  (wall/door/furniture/finish) for an ML model.
+- Probe 11 metric pivot: 4 of the bank's 5 "merges" are CORRECT open-plan
+  grouping (no wall exists). Score product ACTIONS, not polygons-per-label:
+  auto_quantity / geometry_review / vision_correct_or_redraw / open_zone_split.
+  Open areas need FINISH boundaries, not walls -> ML target = walls + finish.
+- Bank 14-11290 final (probes 22/23): 10 auto / 2 review / 1 redraw / 5
+  open-zone. Layer geometry vs independently-read printed dimensions agree
+  within a few % on clean rooms. Caveat: two ESTIMATES agreeing, not truth.
+- Probe 24 (buildings #2, #3): 26-10321-RNVN WORKS end-to-end — vision scale
+  + layer geometry + vision room-anchor montage (outline-only crops) + finish
+  plan materials = 15 rooms, 2,323 SF, carpet/LVT split matches finish key.
+  25-33341-NEWC FAILS: wall layer is a `.3D` solid (16k fragments), never
+  polygonizes; no tolerance fixes representation. Re-tiered MODEL_TARGET.
+- KEY FINDING: "layered" != "geometry-usable". Segment counts over-report
+  supply. Closeability scan (data/triage/closeability.csv, 75 permits with
+  labeled floor plans): only 11 have named wall layers at all; ~2 PROVEN
+  usable (14-11290, 26-10321) + ~3 candidates (19-00670, 20-21673, 23-05848).
+- Ground truth: TRUTH_AREA permits (room finish schedules WITH area column)
+  exist in our data — probe 18 found 73 candidate pages / 36 permits. BUT
+  probe 20: the GOLDEN set (usable wall layers AND parseable per-room SF on
+  the same floor plan) is ~ZERO in the current ~150-permit slice. The two
+  halves don't co-occur yet. North star for downloads: grow the golden set.
+- First honest error number (probe 19): rules geometry on a flattened
+  townhouse = +161% vs its 68-room schedule. Expected (wrong path), recorded.
+
+### Triage system + ops (07-08)
+- Tier system v2 (GPT+Codex reviewed, adopted): GOLD_ALIGNED / TRAIN_LAYERED /
+  TRUTH_AREA / MATERIAL_ONLY / MODEL_TARGET / DISMISS. scripts/triage.py
+  append-only w/ run_id; pipeline.py board|worklist|mark|evaluate; agents:
+  doc-selector (finds the real arch docs among a permit's chunks),
+  schedule-reader (real schedule vs occupant-load noise).
+- Board now: 24 done / 1 in-progress / 10 todo / 1 dismissed. TODO includes 4
+  TRUTH_AREA permits (24-06233, 20-29653, 24-06748, 26-05332) = complete
+  takeoffs readable from the schedule alone, no geometry needed.
+- page_select.py (merged from exp_pageselect, validated on all 25): floor-plan
+  page selection by title filter + room-label density; fixed 8/25 picks, broke 0.
+- Corpus reality (codex_work/outputs/undownloaded_inventory.md): 2,327 docs
+  downloaded of 35,756 known in Neon (2,663 permits). Undownloaded: 33,429
+  docs, incl. 1,690 plan-like arch PDFs across 733 permits. discover_docs.py
+  (webshare proxy pool) enumerates One Stop docs for un-enumerated permits;
+  only 1 permit enumerated so far (tool built, barely used).
+- Web: per-permit takeoff guide pages (/permits/<id>/guide) for the bank,
+  26-10321, 25-33341 (incl. honest geometry-fail imagery).
+
+### Loose ends left by the sprint
+- Batch-25 adjudication PENDING: 2 keep-impacting disagreements (page 7470
+  21-35659; page 6732 20-21673) + 4 low-stakes. Some label-reviewer runs died
+  mid-flight (data/triage/batch25_progress.md).
+- 24-32750-NEWC NEEDS_INGEST: docs 7661538 (floor plans L1-3) + 7661540
+  (finish schedule A700B) identified by doc-selector, not yet downloaded.
+- Codex v2 review consistency fixes (density wording, "exact" claim,
+  vector-first language, MATERIAL_ONLY confirmation rule) partially applied.
+- LARGE uncommitted tree: probe23/24 writeups, ~15 scripts, web guide changes.
+- Model 1 unchanged: 0.267 finish recall @0.5 on frozen split_v1; full recall
+  costs ~24% frac_kept. Deprioritized (Nick); labels accrue as triage
+  byproduct; retrain when permit diversity roughly doubles.
+
+## Next Steps (07-09, Fable — supersedes the 07-05 list)
+1. HOUSEKEEPING: commit the sprint work; finish batch-25 adjudication;
+   ingest 24-32750's two docs; apply remaining Codex v2 wording fixes.
+2. GO-WIDER with a quality gate (decision recommended to Nick, probe 24 §5):
+   enumerate + download plan-like docs in controlled batches, run mechanical
+   triage (layer scan -> closeability gate -> area-schedule scan) on each
+   batch. Targets: geometry-usable pile >=15 permits, TRUTH_AREA >=10,
+   GOLDEN >=3.
+3. PROBE 25: first vector wall-classifier baseline — train on clean-layered
+   permits' segments (labels free from layers), eval on a held-out layered
+   permit with layers stripped. Decides whether ML can replace named layers.
+4. Hand-takeoffs ONLY on gate-passing permits + the 4 TRUTH_AREA schedule
+   takeoffs (cheap, validates schedule path, produces guides/demos).
+5. Model 1: leave as byproduct; retrain at ~2x permit diversity.

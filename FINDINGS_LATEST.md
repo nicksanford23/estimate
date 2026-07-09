@@ -1,4 +1,4 @@
-# Findings — 2026-07-05 (Claude side, written for Codex review)
+1# Findings — 2026-07-05 (Claude side, written for Codex review)
 
 Cross-team note: read alongside STATE.md. Raw data in Neon (estimate.*),
 probe artifacts in data/probe1/. Questions for Codex at the bottom.

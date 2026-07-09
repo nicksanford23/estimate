@@ -6,6 +6,12 @@
 **Crops:** `data/probe11/merge_poly0_102_103_105.jpg`, `merge_poly8_110_111.jpg`
 **Follows:** Probe 7 (layer walls → 12 closed, 1 fragment, 5 merged).
 
+**Superseded current read:** Probe 22/23 is the scorecard to carry forward:
+10 auto-quantity rooms, 2 geometry-review rooms (109, 114), 1
+vision-correct/redraw room (101), and 5 open-zone split labels. This probe's
+main durable finding is still that open-plan merges should not be scored as wall
+failures.
+
 ## Method (intervention-as-diagnosis)
 Reproduce Probe 7's exact layer-wall extraction + polygonization, find the merged
 blobs, then for each merged room-pair check **what layer the dividing lines live
