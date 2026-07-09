@@ -202,7 +202,7 @@ underlying takeoff has nothing to show.
   attempting to parse finish-plan hex tags/legends automatically — that
   parse was manual in probe24 and was never scripted; out of scope here.
 
-## Scoreboard (this session, clean)
+## Scoreboard (original session, clean, --engine v1)
 
 ```
 permit            path    auto  rev  open  art  total_sf
@@ -210,3 +210,74 @@ permit            path    auto  rev  open  art  total_sf
 26-10321-RNVN     layer     16   45     2    0   2393.9
 24-06748-RNVS     rules      0    9     0    0      0.0
 ```
+
+## Probe 29 Task B -- engine ladder wired in, default flipped v1 -> v4
+
+`run` now accepts `--engine {v1,v2,v3,v4}` (rules path only; the layer path has
+no engine ladder of its own and ignores the flag entirely). `v1` is this file's
+original two-tier + admit_minor + `snap_and_close(feet_per_pt=None)` composition,
+unchanged. `v2`/`v3`/`v4` delegate to `geometry_v2.run_geometry_engine_v2` /
+`geometry_v3.run_geometry_engine_v3` / `geometry_v4.run_geometry_engine_v4`
+(probes 27/28/29's density-gated gap closer + cavity/hatch filter, then the
+anchor-cluster membership filter, then the directional proximity-reconnection
+fix -- see `experiments/probe27_closure_fix.md` / `probe28_anchor_filters.md`
+/ `probe29_continuity_fix.md`). v3/v4 need room-code text anchors computed
+*before* geometry runs (the anchor-cluster filter judges cluster membership by
+them); `rules_path_geometry` reuses `real_text_anchors()` (the same function
+ANCHOR/step 4 already used) one step earlier for this, whitelisted to the
+permit's own truth schedule when one exists.
+
+### Re-ran all 3 acceptance tests with `--engine v4`
+
+**1. 14-11290-NEWC (bank), layer path -- IDENTICAL, as expected.**
+`--engine v4` (and `v1`/no flag) all resolve to the same layer-path run: 13
+auto_quantity rooms, 1,178.4 SF, 2 open_zone_split groups -- byte-identical to
+the original acceptance run. Confirms the mission's own prediction: rules-path
+engine choice cannot touch a permit that routes to the layer path.
+
+**2. 26-10321-RNVN, layer path -- IDENTICAL, as expected.**
+`--engine v4`: 16 auto_quantity rooms, 2,393.9 SF, 2 open_zone_split groups --
+byte-identical to the original acceptance run, same reasoning as above.
+
+**3. 24-06748-RNVS, rules path -- MATERIALLY BETTER, the acceptance bar this
+probe was actually testing.**
+
+| engine | auto | review | total_sf | truth rooms matched | coverage | median \|err\| |
+|---|---:|---:|---:|---:|---:|---:|
+| v1 (original baseline, BLOB) | 0 | 9 | 0.0 | 0/36 | 0% | n/a (no matches) |
+| v2 | 5 | 20 | 480.0 | 5/36 | 14% | 56.3% |
+| **v4 (new default)** | **5** | **6** | **480.0** | **5/36** | **14%** | **56.3%** |
+
+**Diagnosis, so the improvement isn't miscredited:** the actual unlock is v2's
+density-gated gap closer + cavity/hatch filter (it alone produces the identical
+5/36 matched, 480 SF, 56.3% median-err result) -- v3/v4's anchor-cluster filter
+doesn't add newly-matched rooms here (it only removes/reclassifies polygons that
+carry zero room anchors), but it materially cleans up the `geometry_review` pool
+a human/vision reviewer would have to sift through afterward: 20 review polygons
+under v2 shrink to 6 under v4, with the same 5 matched rooms retained and zero
+coverage lost. Matched rooms: `201` (+12.2%), `202` (+16.9%), `205` (+403.3%,
+bad), `206` (-56.3%), `208` (-60.7%) -- a real, coherent, non-fabricated grading
+table (2 of 5 within 20% error, 3 clearly wrong but visibly so, not silently
+wrong), a large step up from v1's "nothing to grade at all."
+
+### Decision: default flipped v1 -> v4
+
+No regression on either layer-path acceptance test (both byte-identical); a
+material improvement on the rules-path acceptance test (0/36 -> 5/36 truth
+rooms matched, 0% -> 14% coverage, 0 -> 480 SF, review-polygon noise cut 70%
+with zero coverage loss). `DEFAULT_RULES_ENGINE` in `scripts/takeoff.py` is now
+`"v4"`; `--engine v1` still works for anyone who wants the original baseline.
+
+### Scoreboard (this session, `--engine v4` runs, reproducing the acceptance table)
+
+```
+permit            path    auto  rev  open  art  total_sf
+14-11290-NEWC     layer     13    0     2    0   1178.4
+26-10321-RNVN     layer     16   45     2    0   2393.9
+24-06748-RNVS     rules      5    6     0    0    480.0
+```
+
+(`scoreboard.csv`'s `flags` column now also carries `rules_engine=vN` per run
+for traceability -- the CSV schema itself was left unchanged rather than adding
+a new column, since the file is append-only and already has runs under the old
+header.)

@@ -58,6 +58,25 @@ from probe2b_sf import two_tier_wall_candidates, find_parallel_pairs, admit_mino
 from probe7_layer_walls import extract_wall_layer_segments  # noqa: E402
 from page_select import select_floor_plan_page  # noqa: E402
 from exp_p0 import note_regions  # noqa: E402
+from geometry_v2 import run_geometry_engine_v2  # noqa: E402
+from geometry_v3 import run_geometry_engine_v3  # noqa: E402
+from geometry_v4 import run_geometry_engine_v4  # noqa: E402
+
+# rules-path ENGINE LADDER (probe29 Task B): "v1" is this file's own original
+# two-tier + admit_minor + snap_and_close(feet_per_pt=None) composition,
+# unchanged, still the default until acceptance passes. v2/v3/v4 delegate to
+# the geometry_vN modules' own self-contained engines (each imports/extends
+# the previous one; none of them re-derive wall candidates independently --
+# see scripts/geometry_v2.py / geometry_v3.py / geometry_v4.py). The LAYER
+# path never consults this flag -- it is a rules-path-only choice.
+RULES_ENGINES = ("v1", "v2", "v3", "v4")
+# Flipped v1 -> v4 (probe29 Task B): the 3 acceptance tests in
+# experiments/takeoff_harness.md show zero regression on the two layer-path
+# permits (identical output, engine choice never reaches the layer path) and
+# a material improvement on the rules-path permit (24-06748: 0/36 -> 5/36
+# truth rooms matched, 0 -> 480 SF, 0% -> 14% coverage). See the harness doc
+# for the full before/after and how to roll back (--engine v1 still works).
+DEFAULT_RULES_ENGINE = "v4"
 
 # exp_p0/page_select's ROOM_NUM (`^\d{2,4}[A-Za-z]?$`) is too permissive on
 # dense architectural sheets: 1-2 digit tokens are almost always door/
@@ -309,29 +328,68 @@ def layer_path_geometry(pdf, page_index, pw, ph, fpp):
                         n_polygon_faces_total=n_faces, gap_closing=gap_info)
 
 
-def rules_path_geometry(pdf, page_index, pw, ph, fpp):
+def rules_path_geometry(pdf, page_index, pw, ph, fpp, engine=DEFAULT_RULES_ENGINE, page=None, truth=None):
+    """RULES-path geometry. `engine="v1"` is this function's own original
+    composition (two-tier wall candidates + admit_minor + snap_and_close
+    with the generic gap closer OFF, arcs-only -- unchanged from every prior
+    takeoff.py run). `engine` in ("v2","v3","v4") delegates entirely to the
+    corresponding geometry_vN module's own self-contained engine (density-
+    gated gap closer + cavity/hatch filter for v2; + anchor-cluster
+    membership filter for v3; + directional proximity reconnection for v4
+    -- see scripts/geometry_v2.py / geometry_v3.py / geometry_v4.py /
+    experiments/probe27_closure_fix.md / probe28_anchor_filters.md /
+    probe29_continuity_fix.md for what each adds and why).
+
+    v3/v4 need `anchor_points` (room-code text-anchor locations) computed
+    BEFORE geometry runs (the anchor-cluster filter judges "zero anchors =
+    off-scope" as part of building the room set) -- this reuses the SAME
+    `real_text_anchors()` step ANCHOR (step 4) would do anyway, just called
+    one step earlier; `page` (the already-open fitz page) must be passed in
+    for this. `truth`, if given, whitelists the anchor search to the
+    schedule's own room-number list (cuts door/keynote false-positive
+    anchors), same as step 4 already does."""
     ex = extract_drawings(pdf, page_index)
-    tiers = two_tier_wall_candidates(ex, fpp)
-    combined = tiers["major"] + tiers["minor"]
-    pairs = find_parallel_pairs(combined, fpp)
-    pair_members = set()
-    centerlines, seen = [], set()
-    for a, b, horiz, lo, hi, c in pairs:
-        pair_members.add(a); pair_members.add(b)
-        key = (horiz, round(c / 2.0), round(lo / 3.0), round(hi / 3.0))
-        if key in seen:
-            continue
-        seen.add(key)
-        p0, p1 = ((lo, c), (hi, c)) if horiz else ((c, lo), (c, hi))
-        centerlines.append((p0, p1, hi - lo, 0.3))
-    minor_unpaired = [s for s in tiers["minor"] if s not in pair_members]
-    seed = tiers["major"] + centerlines
-    walls_final, n_added, n_left = admit_minor(seed, minor_unpaired, pw)
-    lines, gap_info = snap_and_close(walls_final, ex["arcs"], pw, feet_per_pt=None)
-    polys, n_faces = polygonize_rooms(lines, pw, ph, MIN_SQFT, MAX_SQFT, fpp)
-    return polys, dict(path="rules", n_major=len(tiers["major"]), n_minor=len(tiers["minor"]),
-                        n_parallel_pairs=len(pairs), n_minor_admitted=n_added,
-                        n_polygon_faces_total=n_faces, gap_closing=gap_info)
+    if engine == "v1":
+        tiers = two_tier_wall_candidates(ex, fpp)
+        combined = tiers["major"] + tiers["minor"]
+        pairs = find_parallel_pairs(combined, fpp)
+        pair_members = set()
+        centerlines, seen = [], set()
+        for a, b, horiz, lo, hi, c in pairs:
+            pair_members.add(a); pair_members.add(b)
+            key = (horiz, round(c / 2.0), round(lo / 3.0), round(hi / 3.0))
+            if key in seen:
+                continue
+            seen.add(key)
+            p0, p1 = ((lo, c), (hi, c)) if horiz else ((c, lo), (c, hi))
+            centerlines.append((p0, p1, hi - lo, 0.3))
+        minor_unpaired = [s for s in tiers["minor"] if s not in pair_members]
+        seed = tiers["major"] + centerlines
+        walls_final, n_added, n_left = admit_minor(seed, minor_unpaired, pw)
+        lines, gap_info = snap_and_close(walls_final, ex["arcs"], pw, feet_per_pt=None)
+        polys, n_faces = polygonize_rooms(lines, pw, ph, MIN_SQFT, MAX_SQFT, fpp)
+        return polys, dict(path="rules", engine="v1", n_major=len(tiers["major"]), n_minor=len(tiers["minor"]),
+                            n_parallel_pairs=len(pairs), n_minor_admitted=n_added,
+                            n_polygon_faces_total=n_faces, gap_closing=gap_info)
+
+    if engine == "v2":
+        out, diag = run_geometry_engine_v2(ex, fpp, MIN_SQFT, MAX_SQFT)
+    elif engine in ("v3", "v4"):
+        whitelist = set(truth["by_room"].keys()) if truth else None
+        anchor_dict = real_text_anchors(page, whitelist) if page is not None else {}
+        anchor_points = list(anchor_dict.values())
+        if engine == "v3":
+            out, diag = run_geometry_engine_v3(ex, fpp, anchor_points, MIN_SQFT, MAX_SQFT)
+        else:
+            out, diag = run_geometry_engine_v4(ex, fpp, anchor_points, MIN_SQFT, MAX_SQFT)
+    else:
+        raise ValueError(f"unknown rules engine {engine!r}, expected one of {RULES_ENGINES}")
+
+    diag["path"] = "rules"
+    diag["engine"] = engine
+    if out is None:
+        return [], diag
+    return out["rooms_all"], diag
 
 
 def routing_gate_real_scale(pdf, page_index, pw, fpp):
@@ -370,19 +428,24 @@ def routing_gate_real_scale(pdf, page_index, pw, fpp):
     return dict(has_named_layer=has_named, n_mid=n_mid, coverage=round(coverage, 3), layers=used[:4])
 
 
-def route_and_extract(pdf, page_index, fpp):
+def route_and_extract(pdf, page_index, fpp, engine=DEFAULT_RULES_ENGINE, truth=None):
     """Layer-aware routing per the mission spec: named wall layers passing a
     quick polygonize sanity (>=5 room-band polygons, scan_closeability's own
-    band) -> layer path; else the rules path (probe2b, unchanged)."""
-    page = fitz.open(pdf)[page_index]
+    band) -> layer path; else the rules path. `engine` selects the rules-path
+    geometry engine (v1-v4, see rules_path_geometry) -- it never affects the
+    layer path, which has no engine ladder of its own."""
+    doc = fitz.open(pdf)
+    page = doc[page_index]
     pw, ph = page.rect.width, page.rect.height
     gate = routing_gate_real_scale(pdf, page_index, pw, fpp)
     if gate["has_named_layer"] and gate["n_mid"] >= 5:
         polys, meta = layer_path_geometry(pdf, page_index, pw, ph, fpp)
         meta["routing_gate"] = gate
+        doc.close()
         return polys, meta, pw, ph
-    polys, meta = rules_path_geometry(pdf, page_index, pw, ph, fpp)
+    polys, meta = rules_path_geometry(pdf, page_index, pw, ph, fpp, engine=engine, page=page, truth=truth)
     meta["routing_gate"] = gate
+    doc.close()
     return polys, meta, pw, ph
 
 
@@ -649,7 +712,7 @@ def append_scoreboard(row):
 
 # ------------------------------------------------------------------------ run
 
-def run_permit(permit, doc_arg=None, pages_arg=None):
+def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE):
     run_dir = os.path.join(OUT_ROOT, permit)
     os.makedirs(run_dir, exist_ok=True)
     resolved = resolve_pages(permit, doc_arg, pages_arg)
@@ -677,7 +740,7 @@ def run_permit(permit, doc_arg=None, pages_arg=None):
                 continue
             flags.append(f"scale_source={scale_source}")
 
-            polys, meta, pw, ph = route_and_extract(pdf, page_index, fpp)
+            polys, meta, pw, ph = route_and_extract(pdf, page_index, fpp, engine=engine, truth=truth)
             if len(polys) < 3:
                 # neither path produced enough to call a takeoff -- page-level
                 # 'redraw' verdict per the mission's product_action enum,
@@ -730,11 +793,11 @@ def run_permit(permit, doc_arg=None, pages_arg=None):
     n_artifact = sum(pr.get("n_artifact", 0) for pr in page_results)
     total_sf = sum(r["area_sf"] for r in all_rooms
                    if r["product_action"] == "auto_quantity" and r["area_sf"])
-    all_flags = sorted({f for pr in page_results for f in pr["flags"]})
+    all_flags = sorted({f for pr in page_results for f in pr["flags"]} | {f"rules_engine={engine}"})
 
     run_json = dict(
         permit=permit, generated_at=datetime.now(timezone.utc).isoformat(),
-        pages=page_results,
+        pages=page_results, rules_engine=engine,
         summary=dict(n_auto=n_auto, n_review=n_review, n_open=n_open, n_artifact=n_artifact,
                      total_sf=round(total_sf, 1), flags=all_flags),
         truth_source=truth["path"] if truth else None,
@@ -885,6 +948,9 @@ def main():
     r.add_argument("permit")
     r.add_argument("--doc", type=int, default=None)
     r.add_argument("--pages", default=None, help="comma-separated page indices")
+    r.add_argument("--engine", choices=RULES_ENGINES, default=DEFAULT_RULES_ENGINE,
+                    help=f"rules-path geometry engine (default {DEFAULT_RULES_ENGINE}); "
+                         "never affects the layer path")
     g = sub.add_parser("grade")
     g.add_argument("permit")
     sub.add_parser("scoreboard")
@@ -892,7 +958,7 @@ def main():
 
     if a.cmd == "run":
         pages_arg = [int(p) for p in a.pages.split(",")] if a.pages else None
-        run_permit(a.permit, a.doc, pages_arg)
+        run_permit(a.permit, a.doc, pages_arg, engine=a.engine)
     elif a.cmd == "grade":
         grade_permit(a.permit)
     elif a.cmd == "scoreboard":
