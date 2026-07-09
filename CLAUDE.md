@@ -1,6 +1,8 @@
 # Commercial Flooring Estimator — standing rules
 
 Read STATE.md before doing anything. Update it before finishing a session.
+Taking over as driver, or deciding what to work next? Read the
+improvement-loop skill — it is the standing machine + decision gates.
 
 ## What this is
 Training-data pipeline + models for a commercial flooring estimating app.
