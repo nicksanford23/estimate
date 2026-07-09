@@ -441,3 +441,25 @@ and `python3 scripts/pipeline.py board`.
   experiments/audit_usable_layered_2026-07-09.md; live version + CSVs in
   data/triage/. NEXT: eyeball-verify the 148 (vision agents, cheap),
   then ML training run v2 per improvement-loop skill gates.
+
+## Eyeball verification results (2026-07-09 late, 4-agent fleet + remainder)
+- 188/201 gate-pass+borderline permits judged: **71 CONFIRMED, 111
+  FALSE_PASS, 6 UNCLEAR** (data/triage/eyeball_verdicts.csv, overlays in
+  data/triage/eyeball/). ~13 remain (session-limit cut; resume by diffing
+  CSV vs report list; shared renderer scripts/eyeball_render.py).
+- DOMINANT false-pass mode is NOT confetti: WRONG-SHEET-TYPE pages
+  (electrical/plumbing/HVAC/roof-framing/RCP/site/landscape/elevation
+  sheets reusing the arch wall xref outscore the real floor plan).
+  ROOT CAUSE: scan_closeability_full.py BAD_TITLE_LINE regex has no MEP
+  patterns and its anchored (^...$) patterns miss wording variants
+  ("ROOF FRAMING PLAN PART A"). CHEAP FIX queued: add
+  ELECTRICAL|PLUMBING|MECHANICAL|POWER|HVAC + substring matching, re-gate,
+  re-rank pages per permit -> some wrong-sheet permits recover via their
+  actual floor-plan page. True-confetti rate is LOW (~2/37 in slice 4).
+- Other decoy patterns catalogued: planting beds/tree canopies, schedule
+  tables, watermarks/legend boxes, blobs spanning rooms, stray polygons in
+  blank space. MEP/RCP sheets tracing REAL layouts can be CONFIRMED.
+- NET: verified TRAIN_LAYERED roster = 71+ confirmed permits (final count
+  after remainder + title-fix re-gate). ML training gate (>=15 multi-firm)
+  remains cleared ~5x. Next: title-filter fix -> re-gate -> settle roster
+  -> ML training run v2 per improvement-loop skill.

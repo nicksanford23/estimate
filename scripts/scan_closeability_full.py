@@ -39,7 +39,7 @@ against the four ground-truth cases (see usable_layered_report.md):
    A building section polygonizes beautifully (closed profile shapes in the
    room band) but is not a floor plan. Verified on 25-33341 p17/p18.
 
-Per permit: its top 5 candidate pages by harvested wall_segs (widened from 3
+Per permit: its top 8 candidate pages by harvested wall_segs (widened from 3
 so real floor plans can surface past section sheets). One row per page (not
 best-of-permit) so calibration can see per-page variance. Each doc is scored
 in an isolated subprocess (fitz segfaults / OOM kills observed on this
@@ -71,7 +71,7 @@ FIELDS = ["permit", "doc_id", "page", "wall_segs_reported", "n_raw_segs",
           "layers", "note"]
 SIZE_SKIP = 300 * 1024 * 1024
 PER_DOC_TIMEOUT = 900
-WORKERS = 2  # running alongside the harvest driver on a 2-core box
+WORKERS = 2
 FPP_SWEEP = (0.05, 0.1, 0.2)
 REP_RE = re.compile(r"3D|HATCH", re.I)
 CORE_RE = re.compile(r"WALL|CMU|STUD|GYP|STUCCO|PARTITION|MASON", re.I)
@@ -180,30 +180,42 @@ def score_page_v2(pdf, pi):
     return dict(base, **best[1])
 
 
-def top_candidates(n=5):
-    by_permit = defaultdict(list)
+def top_candidates(n=8):
+    """Top-N candidate pages per permit by harvested wall_segs. n=8 (was 5,
+    mission suggested 3): verified on 25-33341 that a permit's real floor
+    plans (p11/p12) can rank 6th-7th behind section/elevation sheets that
+    carry more raw wall-layer segments. De-dupes (doc,page) repeats (the
+    merged layered_plans.csv contains duplicate rows from multi-source runs)."""
+    by_permit = defaultdict(dict)
     with open(IN) as f:
         for r in csv.DictReader(f):
-            by_permit[r["permit"]].append(
-                (int(r["doc_id"]), int(r["page"]), int(r["wall_segs"]), r["layers"]))
+            key = (int(r["doc_id"]), int(r["page"]))
+            row = (int(r["doc_id"]), int(r["page"]), int(r["wall_segs"]), r["layers"])
+            prev = by_permit[r["permit"]].get(key)
+            if prev is None or row[2] > prev[2]:
+                by_permit[r["permit"]][key] = row
     out = {}
-    for permit, rows in by_permit.items():
-        rows.sort(key=lambda x: -x[2])
+    for permit, rowmap in by_permit.items():
+        rows = sorted(rowmap.values(), key=lambda x: -x[2])
         out[permit] = rows[:n]
     return out
 
 
 def done_keys():
     """Rows already scored. Transient failures (subprocess crash, download
-    error) are NOT done — a rerun retries them; deterministic outcomes
-    (scored, score_err, skip_too_big) stick. The CSV stays append-only, so a
-    retried key can have 2 rows: analysis should prefer the non-crash row."""
+    error, score_err) are NOT done — a rerun retries them; scored rows and
+    skip_too_big stick. score_err proved transient in practice: concurrent
+    jobs share PDF_TMP_DIR/{doc_id}.pdf and race on its deletion
+    (FileNotFoundError mid-parse — this cost the bank's ground-truth page in
+    the first pass), so it retries too. The CSV stays append-only; a retried
+    key can have 2+ rows: analysis must prefer the clean row."""
     d = set()
     if os.path.exists(OUT):
         with open(OUT) as f:
             for r in csv.DictReader(f):
                 note = (r.get("note") or "")
-                if note.startswith("crash:") or note.startswith("dl_err"):
+                if (note.startswith("crash:") or note.startswith("dl_err")
+                        or note.startswith("score_err")):
                     continue
                 d.add((r["permit"], r["doc_id"], r["page"]))
     return d
@@ -292,7 +304,7 @@ def run_doc(doc_id, tasks):
 
 
 def main():
-    by_permit = top_candidates(n=5)
+    by_permit = top_candidates(n=8)
     print(f"{len(by_permit)} permits with named-wall-layer candidate pages "
           f"(data/triage/layered_plans.csv)", flush=True)
 
