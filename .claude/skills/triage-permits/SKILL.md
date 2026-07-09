@@ -16,8 +16,8 @@ worth it.** Most permits get scanned and parked, never hand-worked.
 
 | tier | requires | action |
 |---|---|---|
-| **GOLD_ALIGNED** | wall CENTERLINE layers on the floor plan **+** a per-room area schedule **+** room numbers that map to that plan **+** same scope/floor/revision | full end-to-end validation; rare |
-| **TRAIN_LAYERED** | wall centerline layers on a floor plan (centerlines, not hatch/demo/legend) | training data (flat render = input, layer linework = weak label — QA'd, not gospel) |
+| **GOLD_ALIGNED** | wall CENTERLINE layers on the floor plan that PASS the closeability gate **+** a per-room area schedule **+** room numbers that map to that plan **+** same scope/floor/revision | full end-to-end validation; rare |
+| **TRAIN_LAYERED** | wall centerline layers on a floor plan (centerlines, not hatch/demo/legend) that PASS the polygonize-quality/closeability gate (`scripts/scan_closeability.py`) — segment count alone is NOT the test (see below) | training data (flat render = input, layer linework = weak label — QA'd, not gospel) |
 | **TRUTH_AREA** | a room-finish/room schedule with a per-room AREA column, rows that map to the plan | grade geometry area — but note it is *area* truth, not final *bid-quantity* truth |
 | **MATERIAL_ONLY** | a room-finish schedule with materials but NO area column | validate material assignment only (not geometry) |
 | **MODEL_TARGET** | floor plans, no usable layers, no per-room SF | PARK — the future flattened-plan ML target |
@@ -33,6 +33,15 @@ waste, alternates — comes only from a flooring company, never from a permit.)
 WRONG plan if its rooms belong to a different floor/phase/revision. Confirm the
 schedule's room numbers appear on the floor plan being measured before trusting it.
 
+**A wall-segment count is necessary but NOT sufficient for TRAIN_LAYERED/
+GOLD_ALIGNED (probe 24 finding).** `.3D`-solid wall layers can clear a segment-
+count threshold (thousands of tiny fragments) and still fail to polygonize a
+single real room, while a clean 2D centerline layer with far fewer segments
+closes cleanly. Run the actual snap→polygonize and score the OUTPUT
+(`scripts/scan_closeability.py`: room-band polygon count, footprint coverage,
+largest-polygon fraction) before calling a permit LAYERED. See
+`experiments/probe24_two_permit_takeoff.md`.
+
 ## The per-permit pipeline (mechanical vs AGENTIC)
 
 - **A. Metadata gate — MECHANICAL.** description + permit_class + code + sqft +
@@ -42,10 +51,19 @@ schedule's room numbers appear on the floor plan being measured before trusting 
   architectural set, plus any SEPARATE finish-schedule/spec doc. Names lie
   ("HDLC…Drawings" vs "Stamped and Approved Plans") — this needs judgment.
 - **C. Download** the chosen doc(s), **D. render** (existing scripts).
-- **D2. Signal scan — MECHANICAL (`scripts/triage.py`).** Per page: wall-
-  centerline segs (layer-classed), floor-plan density, finish-schedule TEXT,
-  candidate per-room-SF. Emits a **provisional** tier + the candidate schedule
-  pages + candidate wall pages. NOTHING here is trusted as final.
+- **D2. Signal scan — MECHANICAL (`scripts/triage.py`).** Per page: resolved
+  page label (floor_plan/finish_schedule/etc. — one category per page by source
+  priority), wall-centerline segment count (layer-classed), finish-schedule TEXT
+  match, candidate per-room-SF regex. Emits a **provisional** tier + the
+  candidate schedule pages + candidate wall pages. This is signal-based, not a
+  floor-plan-density model (there is no density model — `triage.py` says so at
+  the top of the file). NOTHING here is trusted as final.
+- **D3. Closeability gate — MECHANICAL (`scripts/scan_closeability.py`).** For
+  any permit whose provisional tier rests on wall segments, actually run
+  snap→polygonize on the wall layer and score the output rather than trusting
+  the segment count. A permit that clears the segment threshold but fails to
+  polygonize into real rooms is NOT TRAIN_LAYERED (probe 24: `.3D`-solid layers
+  pass the count test and still close nothing).
 - **E. Confirm + label — AGENTIC.**
   - `schedule-reader` (Sonnet vision) reads each candidate schedule page →
     confirms it is a real room-finish table with area and extracts
@@ -54,7 +72,8 @@ schedule's room numbers appear on the floor plan being measured before trusting 
   - `page-labeler` agents label the plan-set pages (blind, per label-pages
     skill) → Model-1 data (keep + non-keep) AND flags the flooring pages.
   - For GOLD/TRAIN, confirm the wall segs are centerlines on a FLOOR PLAN
-    (room-label density; not a legend/hatch/toilet-partition layer).
+    (room-label density; not a legend/hatch/toilet-partition layer) AND that
+    D3's closeability gate passed — segment count alone does not confirm TRAIN.
   - `label-adjudicator` (Opus) only on tier disputes.
 - **F. Record** the confirmed tier + evidence to `data/triage/results.jsonl`
   (OUR file — never write the shared read-only permits/documents tables).
@@ -70,6 +89,11 @@ schedule's room numbers appear on the floor plan being measured before trusting 
 - **Layers must be CENTERLINES on the floor plan** — same page as the rooms,
   not a demo/legend/other sheet. Permit-level "has a wall layer somewhere" is
   not enough (verified: 16-17098/18-13316 layers were on non-floor-plan sheets).
+- **A wall-segment count is not the LAYERED test — closeability is.** Score the
+  actual snap→polygonize output (`scripts/scan_closeability.py`), not just
+  `n_segs >= threshold` (verified: 25-33341's `.3D`-solid wall layer clears the
+  segment count and still fails to close a single real room — see
+  `experiments/probe24_two_permit_takeoff.md`).
 - **Page labels are append-only** (label-pages rules). Corrections = new rows.
   Before triage trusts a page category, resolve to ONE label per page by source
   priority: `adjudicate > review > first-pass` (a page can have all three rows).

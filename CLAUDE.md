@@ -11,7 +11,9 @@ Moonshot (later): auto-suggest room boundaries for square footage.
 - Shared raw (READ, keyed by NOLA ids): Neon Postgres `permits`+`documents`
   (`NEON_DATABASE_URL` in .env), R2 bucket `nola-permit-docs` `docs/{doc_id}.pdf`
   (creds in .env). The R2 file existing IS the "downloaded" flag.
-- Ours (WRITE): local SQLite `data/estimate.db` (schema.sql), files under data/.
+- Ours (WRITE): Neon schema `estimate.*` (same NEON_DATABASE_URL; page_label
+  etc.), plus local files under data/ (triage JSONL/CSVs, renders, pagetext).
+  data/estimate.db is LEGACY read-only (pre-cutover SQLite).
 - Never write another repo's tables. Never PUT to R2 without `%PDF` validation.
 
 ## Hard rules
