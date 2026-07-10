@@ -29,8 +29,8 @@ from download_batch import (already_logged, append_log_row, head_r2,
 from select_batch import JUNK_RE
 
 BUCKET = "nola-permit-docs"
-CYCLE_SECONDS = 1800
-PER_CYCLE_CAP = 400
+CYCLE_SECONDS = 900
+PER_CYCLE_CAP = 800
 WORKERS = 6
 PLAN_LIKE = re.compile(r"\.pdf$", re.I)
 
@@ -103,11 +103,21 @@ def main() -> int:
                         dead += 1
             log(f"cycle done: {ok} uploaded, {dead} dead/failed")
             try:
-                subprocess.run([sys.executable, "scripts/harvest_layered_full.py"],
-                               timeout=1500, capture_output=True)
-                log("harvest pass complete")
+                from download_batch import LOG_PATH as _LOG
+                s3.upload_file(str(_LOG), BUCKET,
+                               "claude-repo/overnight/download_log.csv")
+                log("log snapshot -> R2")
             except Exception as ex:
-                log(f"WARN harvest pass: {ex}")
+                log(f"WARN log snapshot: {ex}")
+            harvest = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "harvest_layered_full.py")
+            if os.path.exists(harvest):
+                try:
+                    subprocess.run([sys.executable, harvest],
+                                   timeout=1500, capture_output=True)
+                    log("harvest pass complete")
+                except Exception as ex:
+                    log(f"WARN harvest pass: {ex}")
             idle_cycles = 0
         else:
             idle_cycles += 1
