@@ -93,9 +93,18 @@ def main() -> int:
         ok = dead = 0
         if batch:
             with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-                futs = [pool.submit(worker, env, BUCKET, row) for row in batch]
+                futs = {pool.submit(worker, env, BUCKET, row): row
+                        for row in batch}
                 for f in as_completed(futs):
-                    row = f.result()
+                    try:
+                        row = f.result()
+                    except Exception as ex:  # one bad download never kills the loop
+                        src = futs[f]
+                        row = {"doc_id": src["doc_id"],
+                               "permit": src.get("permit_num", ""),
+                               "status": "fetch_exc",
+                               "bytes": 0,
+                               "note": f"{type(ex).__name__}: {str(ex)[:60]}"}
                     append_log_row(row)
                     if row.get("status") == "ok":
                         ok += 1
