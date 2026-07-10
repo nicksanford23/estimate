@@ -184,7 +184,7 @@ a { color: inherit; text-decoration: none; }
 .doc-row { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 12px 15px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .doc-row .nm { flex: 1 1 220px; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-row .badges { display: flex; gap: 6px; flex-wrap: wrap; }
-.actions { display: flex; gap: 8px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .btn { font-family: var(--font-mono); font-size: 12.5px; padding: 7px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); cursor: pointer; white-space: nowrap; display: inline-block; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.ghost:hover { border-color: var(--accent); }
@@ -348,3 +348,34 @@ table.ops-table td.wrap { white-space: normal; }
 .canary-dot.warn { background: var(--warn); }
 .canary-dot.bad { background: var(--bad); }
 .dash { color: var(--muted); }
+
+/* Before/after overlay pairs (permit detail) — stacked on mobile with the
+   original first (DOM order), side-by-side from 700px up. */
+.pair-list { display: flex; flex-direction: column; gap: 18px; }
+.pair { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 700px) { .pair { grid-template-columns: 1fr 1fr; } }
+.pair-cell { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.pair-cell img { width: 100%; display: block; }
+.pair-cell figcaption { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); padding: 7px 9px; background: var(--surface); border-top: 1px solid var(--line); margin-top: auto; overflow-wrap: anywhere; }
+.pair-missing { display: flex; align-items: center; justify-content: center; min-height: 160px; flex: 1; color: var(--muted); font-family: var(--font-mono); font-size: 12px; padding: 20px; text-align: center; background: var(--surface-2); }
+
+/* Full-document thumbnail strip + lightbox */
+.docstrip { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 14px; overflow: hidden; }
+.docstrip-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.docstrip-head .nm { flex: 1 1 200px; min-width: 0; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docstrip-head .pc { color: var(--muted); font-weight: 400; font-family: var(--font-mono); font-size: 12px; }
+.docstrip-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 12px; -webkit-overflow-scrolling: touch; }
+.docstrip-thumb { flex: 0 0 auto; width: 118px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; padding: 0; cursor: zoom-in; display: flex; flex-direction: column; text-align: left; }
+.docstrip-thumb:hover { border-color: var(--accent); }
+.docstrip-thumb img { width: 100%; aspect-ratio: 17 / 22; object-fit: cover; object-position: top; display: block; background: #fff; }
+.docstrip-thumb .cap { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); padding: 5px 7px; background: var(--surface); border-top: 1px solid var(--line); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 118px; }
+.docstrip-thumb .cap b { color: var(--ink); }
+
+.lightbox { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: rgba(8, 12, 18, 0.97); }
+.lightbox-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.12); color: #cdd6de; }
+.lightbox-bar .cap { font-family: var(--font-mono); font-size: 12px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lightbox-bar .tools { display: flex; gap: 6px; }
+.lightbox-bar .tools button { font-family: var(--font-mono); font-size: 14px; background: rgba(255,255,255,0.09); color: #e6ecf1; border: 1px solid rgba(255,255,255,0.16); border-radius: 7px; padding: 7px 13px; cursor: pointer; min-width: 42px; }
+.lightbox-bar .tools button:disabled { opacity: 0.35; }
+.lightbox-stage { flex: 1; overflow: auto; background: #fff; overscroll-behavior: contain; }
+.lightbox-stage img { display: block; width: 100%; height: auto; }

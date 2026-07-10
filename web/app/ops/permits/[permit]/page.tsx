@@ -6,12 +6,33 @@ import {
   loadClusters,
   loadCloseabilityFull,
   loadLayeredPlans,
+  loadTrainRoster,
   findOverlaysForPermit,
+  type OverlayImage,
 } from "@/lib/opsData";
+import { getDocMeta, type DocMeta } from "@/lib/opsPages";
+import OrigOverlayPair from "@/components/OrigOverlayPair";
+import DocStrip from "@/components/DocStrip";
 import { DEMO_PERMITS } from "@/lib/demoTypes";
 import { GUIDES } from "@/lib/guides";
 
 export const dynamic = "force-dynamic";
+
+// Pull "<docid>_p<page>" out of overlay filenames like
+// overlay_24-06748-RNVS_7372349_p5_model.png / downstream_..._4237450_p7.jpg
+const DOC_PAGE_RE = /(\d{6,})_p(\d+)/;
+
+function overlayDocPage(
+  o: OverlayImage,
+  fallback: { doc_id: string; page: string } | null
+): { doc_id: string | null; page: string | null } {
+  const m = o.file.match(DOC_PAGE_RE);
+  if (m) return { doc_id: m[1], page: m[2] };
+  // eyeball renders are named <permit>.jpg — the matching verdict/roster row
+  // records which doc/page that render came from.
+  if (fallback) return { doc_id: fallback.doc_id, page: fallback.page };
+  return { doc_id: null, page: null };
+}
 
 export default async function OpsPermitDetail({
   params,
@@ -30,6 +51,7 @@ export default async function OpsPermitDetail({
   const clusterMates = myCluster ? clusters.filter((c) => c.cluster_id === myCluster.cluster_id) : [];
   const closeRows = loadCloseabilityFull().filter((r) => r.permit === permit);
   const layerRows = loadLayeredPlans().filter((r) => r.permit === permit);
+  const rosterRow = loadTrainRoster().find((r) => r.permit === permit) ?? null;
   const overlays = findOverlaysForPermit(permit);
 
   const known =
@@ -39,6 +61,30 @@ export default async function OpsPermitDetail({
   const latest = verdicts[0] ?? null;
   const hasDemo = DEMO_PERMITS.includes(permit);
   const hasGuide = Object.prototype.hasOwnProperty.call(GUIDES, permit);
+  const fallbackDocPage = latest
+    ? { doc_id: latest.doc_id, page: latest.page }
+    : rosterRow
+      ? { doc_id: rosterRow.doc_id, page: rosterRow.page }
+      : null;
+
+  // Primary documents for the full-document strips: the docs this permit's
+  // pipeline artifacts actually reference (roster first, then verdicts,
+  // then geometry candidates), capped so a permit with many scored docs
+  // doesn't render a wall of strips.
+  const docOrder: string[] = [];
+  const pushDoc = (id: string | null | undefined) => {
+    if (id && /^\d+$/.test(id) && !docOrder.includes(id)) docOrder.push(id);
+  };
+  pushDoc(rosterRow?.doc_id);
+  for (const v of verdicts) pushDoc(v.doc_id);
+  for (const r of closeRows) pushDoc(r.doc_id);
+  for (const r of layerRows) pushDoc(r.doc_id);
+  // permits whose only doc references live in overlay filenames (e.g. the
+  // TRUTH_AREA takeoff permits — no layered/closeability/verdict rows)
+  for (const o of overlays) pushDoc(o.file.match(DOC_PAGE_RE)?.[1]);
+  const docMetas = (await Promise.all(docOrder.slice(0, 3).map((d) => getDocMeta(d)))).filter(
+    (m): m is DocMeta => m !== null
+  );
 
   return (
     <main>
@@ -80,15 +126,20 @@ export default async function OpsPermitDetail({
 
       {overlays.length > 0 && (
         <>
-          <div className="section-title">Overlay renders ({overlays.length})</div>
-          <div className="ops-overlay-grid">
-            {overlays.map((o) => (
-              <div className="ops-overlay" key={o.rel}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/opsimg/${o.rel.split("/").map(encodeURIComponent).join("/")}`} alt={o.file} loading="lazy" />
-                <div className="cap">{o.file}</div>
-              </div>
-            ))}
+          <div className="section-title">Before / after ({overlays.length} renders)</div>
+          <div className="pair-list">
+            {overlays.map((o) => {
+              const { doc_id, page } = overlayDocPage(o, fallbackDocPage);
+              return (
+                <OrigOverlayPair
+                  key={o.rel}
+                  docId={doc_id}
+                  page={page}
+                  overlaySrc={`/api/opsimg/${o.rel.split("/").map(encodeURIComponent).join("/")}`}
+                  overlayFile={o.file}
+                />
+              );
+            })}
           </div>
         </>
       )}
@@ -163,6 +214,20 @@ export default async function OpsPermitDetail({
           </div>
         </>
       )}
+
+      {docMetas.length > 0 && (
+        <>
+          <div className="section-title">Full document{docMetas.length > 1 ? "s" : ""}</div>
+          {docMetas.map((m) => (
+            <DocStrip key={m.docId} docId={m.docId} pageCount={m.pageCount} titles={m.titles} name={m.name} />
+          ))}
+          <p className="hint">
+            Tap a page to view it full size. Page titles are read from the extracted page text where
+            available.
+          </p>
+        </>
+      )}
+      <div style={{ height: 30 }} />
     </main>
   );
 }
