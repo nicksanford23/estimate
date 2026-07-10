@@ -18,8 +18,13 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
 ## 1. Identity (amended: permit ≠ building ≠ plan-set)
 - **permit**(id, permit_num, city_description, city_sqft, filed/issued
   dates, address_raw) — the city record, verbatim, clearly theirs.
-- **building**(id, permit_id, name, address, notes) — physical building;
-  a permit may have several buildings (A/D/F case).
+- **building**(id, name, address, firm_id nullable, notes) — physical
+  building, independent of any one permit.
+- **permit_building**(permit_id, building_id, role) — MANY-TO-MANY
+  (v1.2): one permit can cover several buildings; one building accrues
+  permits over time.
+- **level**(id, building_id, name, ordinal) — floor/wing context (v1.2):
+  Room 101 repeats across levels/units; spaces attach to a level.
 - **plan_set**(id, building_id, revision_label, effective_date, notes) —
   a coherent submission/revision: "these floor plans + this schedule +
   this addendum were valid together." Geometry runs and datasets point at
@@ -39,23 +44,29 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
   = resolved claim. Extractions and runs record the exact region-geometry
   decision id they used. UI: Approve / Redraw / Use-full-page (redraw
   beats handle-dragging). Rectangles only in pilot.
-- **space**(id, building_id, code, name, kind: room|open_zone|corridor|
-  material_zone, notes) — THE CANONICAL LOGICAL ROOM (amended). Persistent
-  across revisions (same space, new source geometry — founder decision #2).
+- **space**(id, building_id, level_id, code, name, kind: room|open_zone|
+  corridor|material_zone, notes) — THE CANONICAL LOGICAL ROOM. Identity
+  across plan-set revisions is asserted by an explicit identity_link
+  human_decision (v1.2) — never auto-assumed from code/name matching.
 - **space_source_link**(space_id, source_type: schedule_row|label_anchor|
   polygon_prediction|region|takeoff_item, source_id, link_decision_id) —
-  how schedule truth, plan labels, geometry, and customer quantities meet.
+  THE authoritative connection of schedule truth, plan labels, geometry,
+  and customer quantities. polygon_prediction.space_id is a derived cache
+  of this table only, never independently authoritative (v1.2).
 
 ## 2. Leakage & provenance groups (amended)
 - **design_family**(id, name) + **design_family_member**(family_id,
   member_type: document|page|region, member_id) — duplication tracked at
   the level it occurs, not per building.
-- **leakage_group**(id) + members — the CONSERVATIVE union of: exact doc
-  hashes, perceptual page matches, region-similarity, refiles, known
-  standard designs, manual links. RULE: all members of a leakage_group
-  share one dataset split. Architecture FIRM tracked separately
-  (building.firm_id via title-block evidence) — firm holdouts measure
-  cross-firm generalization; family and firm are different dimensions.
+- **leakage_group**(id, clustering_run_id) + members — the CONSERVATIVE
+  union of: exact doc hashes, perceptual page matches, region-similarity,
+  refiles, known standard designs, manual links. RULE: all members of a
+  leakage_group share one dataset split. **clustering_run**(id, method,
+  version, created_at) — similarity logic evolves; every assignment and
+  every dataset manifest pins the clustering version used (v1.2).
+  Architecture FIRM tracked separately (building.firm_id via title-block
+  evidence) — firm holdouts measure cross-firm generalization; family and
+  firm are different dimensions.
 
 ## 3. Extraction (two tiers, versioned; amended cheap/heavy split)
 - **extraction**(id, page_id, tier: cheap|heavy|semantic, extractor_name,
@@ -86,12 +97,17 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
 - **machine_observation**(id, target_type, target_id, claim, value_json,
   source, source_version, score_raw, score_type, calibration_version,
   created_at) — confidences typed per source, never cross-compared raw.
-- **human_decision**(id, target_type, target_id, claim, value_json, actor
-  (human|ai_agent|importer|system + identity), decided_at,
-  taxonomy_version, blind bool, supersedes_decision_id nullable,
-  status: active|superseded|disputed, note) — RESOLUTION FOLLOWS THE
-  SUPERSESSION CHAIN, not timestamps (amended). Disagreements: an
-  adjudication decision references both disputed decisions.
+- **human_decision**(id, target_type, target_id, claim, value_json,
+  actor_type (human|importer|system), actor_id, original_source nullable
+  (v1.2: imports preserve who originally asserted it), decided_at,
+  taxonomy_version, blind bool, note) — rows NEVER updated.
+- **decision_relation**(id, from_decision_id, to_decision_id, relation:
+  supersedes|disputes|adjudicates, created_at) — APPEND-ONLY graph
+  (v1.2 replaces status columns + single supersedes id): status
+  (active/superseded/disputed) is DERIVED by walking relations;
+  adjudication rows can reference any number of conflicting decisions.
+- AI-agent labels are machine_observations, never human_decisions — even
+  when imported from legacy files (v1.2).
 - Geometry corrections: **geometry_annotation** holds the rich payload
   (original+corrected geometry, action, failure_type, affected segments,
   label/material before+after, split/merge polygon links) and ALWAYS links
@@ -128,10 +144,13 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
 ## 7. Datasets & models (amended roles)
 - **artifact**(id, r2_key, sha256, bytes, kind).
 - **dataset_snapshot**(id, name, purpose, created_at, code_commit,
-  manifest_artifact_id) — manifest: exact decision/extraction/region ids,
-  artifact hashes, exclusions, confirmed NEGATIVES, and per-item split
-  role {train|val|frozen_test|calibration|canary} frozen at snapshot time,
-  split by leakage_group.
+  clustering_version (v1.2: pins the exact leakage/design-family
+  assignment method+version used for splitting), manifest_artifact_id).
+- **dataset_item**(snapshot_id, split_role {train|val|frozen_test|
+  calibration|canary}, plan_set_id, region_id, extraction_ids[],
+  decision_ids[], artifact_hashes[]) — EACH ITEM pins its full provenance
+  (v1.2); snapshots span many projects so nothing is pinned at snapshot
+  level except code+clustering versions.
 - **model_version**(id, name, training_dataset_snapshot_id, config,
   model_artifact_id) + **evaluation_run**(id, model_version_id,
   eval_dataset_snapshot_id, eval_config, metrics_json, report_artifact).
@@ -159,9 +178,14 @@ Success = the PROCESS works: identity unambiguous, pages/regions
 confirmable, schedule truth traceable, failures understandable,
 corrections captured structurally, datasets reproducible — NOT every
 polygon corrected in every building (deep-correct selected rooms only,
-e.g. not all 68 townhouse rooms). Blind-label a SUSTAINABLE sample
-(founder decision #4); log founder confusion as process defects; schema
-may evolve through building 10.
+e.g. not all 68 townhouse rooms). Blind-label a SUSTAINABLE sample,
+STRATIFIED (v1.2) across predicted keep/drop, hybrid sheets, firms,
+low-confidence results, and rare labels — never plain-random, or junk
+pages dominate the audit. Log founder confusion as process defects;
+schema may evolve through building 10. Legacy backfill: Nick's own UI
+verdicts import as human_decisions (original actor preserved, no active
+adjudication — pilot buildings re-confirmed fresh); agent labels import
+as machine_observations.
 
 ## 12. Founder decisions (Nick to answer before lock)
 1. Top-level operational object in the Buildings UI (recommend: building,
