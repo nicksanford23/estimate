@@ -62,8 +62,11 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
   union of: exact doc hashes, perceptual page matches, region-similarity,
   refiles, known standard designs, manual links. RULE: all members of a
   leakage_group share one dataset split. **clustering_run**(id, method,
-  version, created_at) — similarity logic evolves; every assignment and
-  every dataset manifest pins the clustering version used (v1.2).
+  version, code_commit, config_hash, input_snapshot_hash,
+  assignment_artifact_id, created_at) — similarity logic evolves AND the
+  same version regroups when inputs change (v1.3), so runs pin
+  code+config+input hashes and their output assignment artifact; dataset
+  snapshots pin clustering_run_id + assignment artifact hash.
   Architecture FIRM tracked separately (building.firm_id via title-block
   evidence) — firm holdouts measure cross-firm generalization; family and
   firm are different dimensions.
@@ -99,13 +102,18 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
   created_at) — confidences typed per source, never cross-compared raw.
 - **human_decision**(id, target_type, target_id, claim, value_json,
   actor_type (human|importer|system), actor_id, original_source nullable
-  (v1.2: imports preserve who originally asserted it), decided_at,
-  taxonomy_version, blind bool, note) — rows NEVER updated.
+  (v1.2: imports preserve who originally asserted it), binding bool
+  (v1.3: imported/legacy rows are binding=false — visible as reference,
+  NEVER resolve as current truth; only fresh binding decisions do),
+  decided_at, taxonomy_version, blind bool, note) — rows NEVER updated.
 - **decision_relation**(id, from_decision_id, to_decision_id, relation:
-  supersedes|disputes|adjudicates, created_at) — APPEND-ONLY graph
-  (v1.2 replaces status columns + single supersedes id): status
-  (active/superseded/disputed) is DERIVED by walking relations;
-  adjudication rows can reference any number of conflicting decisions.
+  supersedes|disputes|adjudicates, actor_type, actor_id, note,
+  created_at) — APPEND-ONLY graph; status (active/superseded/disputed)
+  DERIVED by walking relations; adjudications reference any number of
+  conflicting decisions. INVARIANTS (v1.3): no self-links (CHECK
+  from<>to); one relation kind per ordered pair (unique constraint);
+  supersession graph must stay acyclic — enforced at write time by the
+  application (walk-before-insert), violations rejected.
 - AI-agent labels are machine_observations, never human_decisions — even
   when imported from legacy files (v1.2).
 - Geometry corrections: **geometry_annotation** holds the rich payload
@@ -144,13 +152,17 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
 ## 7. Datasets & models (amended roles)
 - **artifact**(id, r2_key, sha256, bytes, kind).
 - **dataset_snapshot**(id, name, purpose, created_at, code_commit,
-  clustering_version (v1.2: pins the exact leakage/design-family
-  assignment method+version used for splitting), manifest_artifact_id).
-- **dataset_item**(snapshot_id, split_role {train|val|frozen_test|
-  calibration|canary}, plan_set_id, region_id, extraction_ids[],
-  decision_ids[], artifact_hashes[]) — EACH ITEM pins its full provenance
-  (v1.2); snapshots span many projects so nothing is pinned at snapshot
-  level except code+clustering versions.
+  clustering_run_id, clustering_assignment_artifact_id (v1.3: pins the
+  exact grouping OUTPUT hash, not just the method version),
+  manifest_artifact_id).
+- **dataset_item**(id, snapshot_id, split_role {train|val|frozen_test|
+  calibration|canary}, plan_set_id, region_id) with normalized child
+  link tables (v1.3, real FK integrity — no arrays):
+  **dataset_item_extraction**(item_id, extraction_id),
+  **dataset_item_decision**(item_id, decision_id),
+  **dataset_item_artifact**(item_id, artifact_id). The manifest artifact
+  additionally carries the hashed flat listing for external
+  reproducibility.
 - **model_version**(id, name, training_dataset_snapshot_id, config,
   model_artifact_id) + **evaluation_run**(id, model_version_id,
   eval_dataset_snapshot_id, eval_config, metrics_json, report_artifact).
