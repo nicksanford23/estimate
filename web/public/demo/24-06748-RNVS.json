@@ -1,0 +1,1107 @@
+{
+  "project": {
+    "id": "24-06748-RNVS",
+    "name": "Residential Renovation, 2nd Floor \u2014 24-06748-RNVS",
+    "address": null
+  },
+  "pages": [
+    {
+      "id": "7372349_p6",
+      "image": "/demo/24-06748-RNVS.png",
+      "feet_per_pixel": 0.06548,
+      "rooms": [
+        {
+          "id": "24-06748-RNVS-poly0",
+          "name": "CLOSET",
+          "polygon": [
+            [
+              2080.0,
+              533.0
+            ],
+            [
+              2080.0,
+              351.0
+            ],
+            [
+              2034.5,
+              357.5
+            ],
+            [
+              2034.5,
+              403.0
+            ],
+            [
+              2028.0,
+              403.0
+            ],
+            [
+              2021.5,
+              403.0
+            ],
+            [
+              2021.5,
+              357.5
+            ],
+            [
+              2002.0,
+              357.5
+            ],
+            [
+              2002.0,
+              429.0
+            ],
+            [
+              2008.5,
+              429.0
+            ],
+            [
+              2008.5,
+              500.5
+            ],
+            [
+              2002.0,
+              500.5
+            ],
+            [
+              1982.5,
+              500.5
+            ],
+            [
+              1963.0,
+              500.5
+            ],
+            [
+              1904.5,
+              500.5
+            ],
+            [
+              1904.5,
+              429.0
+            ],
+            [
+              1911.0,
+              429.0
+            ],
+            [
+              1911.0,
+              357.5
+            ],
+            [
+              1878.5,
+              357.5
+            ],
+            [
+              1839.5,
+              351.0
+            ],
+            [
+              1839.5,
+              520.0
+            ],
+            [
+              1846.0,
+              520.0
+            ],
+            [
+              1846.0,
+              564.6
+            ],
+            [
+              1885.0,
+              559.0
+            ],
+            [
+              1891.5,
+              552.5
+            ],
+            [
+              1898.0,
+              552.5
+            ],
+            [
+              1904.5,
+              552.5
+            ],
+            [
+              1911.0,
+              578.5
+            ],
+            [
+              1943.5,
+              611.0
+            ],
+            [
+              2080.0,
+              611.0
+            ]
+          ],
+          "sf": 181.2,
+          "status": "accepted",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: CLOSET -- NEW WOOD FLOOR, base WD 8"
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly1",
+          "name": "STAIR 2",
+          "polygon": [
+            [
+              2080.0,
+              805.1
+            ],
+            [
+              2080.0,
+              729.6
+            ],
+            [
+              2073.5,
+              728.0
+            ],
+            [
+              2015.0,
+              728.0
+            ],
+            [
+              2007.6,
+              702.0
+            ],
+            [
+              1943.5,
+              702.0
+            ],
+            [
+              1943.5,
+              682.5
+            ],
+            [
+              1898.0,
+              663.0
+            ],
+            [
+              1898.0,
+              894.2
+            ],
+            [
+              1930.5,
+              880.3
+            ],
+            [
+              1930.5,
+              819.0
+            ],
+            [
+              1943.5,
+              806.0
+            ],
+            [
+              2034.5,
+              806.0
+            ],
+            [
+              2077.8,
+              806.0
+            ]
+          ],
+          "sf": 90.9,
+          "status": "accepted",
+          "material": "-",
+          "evidence": {
+            "schedule_row": "Finish schedule: STAIR 2 -- -, base BRICK PT."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly2",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              2041.0,
+              221.0
+            ],
+            [
+              1813.5,
+              221.0
+            ],
+            [
+              1859.0,
+              227.5
+            ],
+            [
+              1865.5,
+              227.5
+            ],
+            [
+              1872.0,
+              240.5
+            ],
+            [
+              1878.5,
+              273.0
+            ],
+            [
+              1878.5,
+              331.5
+            ],
+            [
+              1898.0,
+              331.5
+            ],
+            [
+              1937.0,
+              305.5
+            ],
+            [
+              1937.0,
+              286.0
+            ],
+            [
+              1937.0,
+              247.0
+            ],
+            [
+              1950.0,
+              240.5
+            ],
+            [
+              1995.5,
+              240.5
+            ]
+          ],
+          "sf": 34.7,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly3",
+          "name": "ELEV 2",
+          "polygon": [
+            [
+              2002.0,
+              624.0
+            ],
+            [
+              1943.5,
+              624.0
+            ],
+            [
+              1911.0,
+              650.0
+            ],
+            [
+              1943.5,
+              682.5
+            ],
+            [
+              2002.0,
+              682.5
+            ]
+          ],
+          "sf": 18.7,
+          "status": "accepted",
+          "material": "-",
+          "evidence": {
+            "schedule_row": "Finish schedule: ELEV 2 -- -, base -"
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly4",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              1930.5,
+              1111.5
+            ],
+            [
+              1924.0,
+              1111.5
+            ],
+            [
+              1924.0,
+              1196.0
+            ],
+            [
+              1989.0,
+              1196.0
+            ],
+            [
+              1989.0,
+              1127.8
+            ],
+            [
+              1982.5,
+              1111.5
+            ]
+          ],
+          "sf": 23.3,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly5",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              1982.5,
+              1209.0
+            ],
+            [
+              1937.0,
+              1209.0
+            ],
+            [
+              1937.0,
+              1287.0
+            ],
+            [
+              1982.5,
+              1287.0
+            ]
+          ],
+          "sf": 15.2,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly6",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              2112.5,
+              494.0
+            ],
+            [
+              2197.0,
+              494.0
+            ],
+            [
+              2184.0,
+              448.5
+            ],
+            [
+              2112.5,
+              448.5
+            ]
+          ],
+          "sf": 15.2,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly7",
+          "name": "LAUN.",
+          "polygon": [
+            [
+              1864.6,
+              240.5
+            ],
+            [
+              1813.5,
+              240.5
+            ],
+            [
+              1807.0,
+              279.5
+            ],
+            [
+              1807.0,
+              325.0
+            ],
+            [
+              1846.0,
+              331.5
+            ],
+            [
+              1878.5,
+              331.5
+            ],
+            [
+              1878.5,
+              273.0
+            ]
+          ],
+          "sf": 25.8,
+          "status": "accepted",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: LAUN. -- TILE, base WD 8"
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly8",
+          "name": "BEDROOM",
+          "polygon": [
+            [
+              1995.5,
+              1196.0
+            ],
+            [
+              1995.5,
+              1202.5
+            ],
+            [
+              1995.5,
+              1300.0
+            ],
+            [
+              1982.5,
+              1287.0
+            ],
+            [
+              1937.0,
+              1287.0
+            ],
+            [
+              1937.0,
+              1209.0
+            ],
+            [
+              1917.5,
+              1202.5
+            ],
+            [
+              1917.5,
+              1300.0
+            ],
+            [
+              1911.0,
+              1300.0
+            ],
+            [
+              1898.0,
+              1300.0
+            ],
+            [
+              1885.0,
+              1300.0
+            ],
+            [
+              1878.5,
+              1300.0
+            ],
+            [
+              1878.5,
+              1378.0
+            ],
+            [
+              1885.0,
+              1378.0
+            ],
+            [
+              1885.0,
+              1306.5
+            ],
+            [
+              1891.5,
+              1306.5
+            ],
+            [
+              1898.0,
+              1306.5
+            ],
+            [
+              1904.5,
+              1306.5
+            ],
+            [
+              1911.0,
+              1306.5
+            ],
+            [
+              1917.5,
+              1306.5
+            ],
+            [
+              1924.0,
+              1306.5
+            ],
+            [
+              1924.0,
+              1378.0
+            ],
+            [
+              1924.0,
+              1384.5
+            ],
+            [
+              1924.0,
+              1482.0
+            ],
+            [
+              1924.0,
+              1553.5
+            ],
+            [
+              1943.5,
+              1553.5
+            ],
+            [
+              1950.0,
+              1553.5
+            ],
+            [
+              2041.0,
+              1553.5
+            ],
+            [
+              2041.0,
+              1228.5
+            ],
+            [
+              2041.0,
+              1176.5
+            ]
+          ],
+          "sf": 163.4,
+          "status": "accepted",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: BEDROOM -- NEW WOOD FLOOR, base WD 8"
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly9",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              1963.0,
+              429.0
+            ],
+            [
+              1956.5,
+              429.0
+            ],
+            [
+              1950.0,
+              429.0
+            ],
+            [
+              1943.5,
+              429.0
+            ],
+            [
+              1937.0,
+              429.0
+            ],
+            [
+              1930.5,
+              429.0
+            ],
+            [
+              1924.0,
+              429.0
+            ],
+            [
+              1917.5,
+              429.0
+            ],
+            [
+              1911.0,
+              429.0
+            ],
+            [
+              1904.5,
+              429.0
+            ],
+            [
+              1904.5,
+              500.5
+            ],
+            [
+              1963.0,
+              500.5
+            ]
+          ],
+          "sf": 17.9,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-poly10",
+          "name": "Unlabeled area",
+          "polygon": [
+            [
+              1852.5,
+              1482.0
+            ],
+            [
+              1859.0,
+              1482.0
+            ],
+            [
+              1865.5,
+              1482.0
+            ],
+            [
+              1872.0,
+              1482.0
+            ],
+            [
+              1878.5,
+              1482.0
+            ],
+            [
+              1885.0,
+              1482.0
+            ],
+            [
+              1891.5,
+              1482.0
+            ],
+            [
+              1898.0,
+              1482.0
+            ],
+            [
+              1904.5,
+              1482.0
+            ],
+            [
+              1911.0,
+              1482.0
+            ],
+            [
+              1917.5,
+              1482.0
+            ],
+            [
+              1924.0,
+              1482.0
+            ],
+            [
+              1924.0,
+              1384.5
+            ],
+            [
+              1852.5,
+              1384.5
+            ]
+          ],
+          "sf": 29.9,
+          "status": "review",
+          "material": null,
+          "evidence": {
+            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
+          }
+        },
+        {
+          "id": "24-06748-RNVS-schedule-101",
+          "name": "WHITE BOX (101)",
+          "polygon": null,
+          "sf": 699,
+          "status": "draw_needed",
+          "material": "POLISHED CONC.",
+          "evidence": {
+            "schedule_row": "Finish schedule: WHITE BOX -- POLISHED CONC., base WOOD",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-102",
+          "name": "RR1 (102)",
+          "polygon": null,
+          "sf": 37,
+          "status": "draw_needed",
+          "material": "STAINED CONC.",
+          "evidence": {
+            "schedule_row": "Finish schedule: RR1 -- STAINED CONC., base TILE",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-103",
+          "name": "MOP RM (103)",
+          "polygon": null,
+          "sf": 32,
+          "status": "draw_needed",
+          "material": "STAINED CONC.",
+          "evidence": {
+            "schedule_row": "Finish schedule: MOP RM -- STAINED CONC., base TILE",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-104",
+          "name": "ENTRY (104)",
+          "polygon": null,
+          "sf": 73,
+          "status": "draw_needed",
+          "material": "EXIST. CONC. | NEW STAIN",
+          "evidence": {
+            "schedule_row": "Finish schedule: ENTRY -- EXIST. CONC. | NEW STAIN, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-105",
+          "name": "STAIR 1 (105)",
+          "polygon": null,
+          "sf": 82,
+          "status": "draw_needed",
+          "material": "EXIST. CONC. | NEW STAIN",
+          "evidence": {
+            "schedule_row": "Finish schedule: STAIR 1 -- EXIST. CONC. | NEW STAIN, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-106",
+          "name": "ELEV 1 (106)",
+          "polygon": null,
+          "sf": 15,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: ELEV 1 -- TILE, base WD",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-107",
+          "name": "GARAGE (107)",
+          "polygon": null,
+          "sf": 409,
+          "status": "draw_needed",
+          "material": "EXIST. CONC.",
+          "evidence": {
+            "schedule_row": "Finish schedule: GARAGE -- EXIST. CONC., base NA",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-100",
+          "name": "ENTRY (100)",
+          "polygon": null,
+          "sf": 63,
+          "status": "draw_needed",
+          "material": "EXIST. CONC. | NEW STAIN",
+          "evidence": {
+            "schedule_row": "Finish schedule: ENTRY -- EXIST. CONC. | NEW STAIN, base NA",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-204",
+          "name": "BEDROOM 2 (204)",
+          "polygon": null,
+          "sf": 172,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: BEDROOM 2 -- NEW WOOD FLOOR, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-207",
+          "name": "BATH (207)",
+          "polygon": null,
+          "sf": 54,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: BATH -- TILE, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-203",
+          "name": "CORRIDOR (203)",
+          "polygon": null,
+          "sf": 215,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: CORRIDOR -- NEW WOOD FLOOR, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-212",
+          "name": "CLOSET (212)",
+          "polygon": null,
+          "sf": 96,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: CLOSET -- NEW WOOD FLOOR, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-209",
+          "name": "M. BATH (209)",
+          "polygon": null,
+          "sf": 136,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: M. BATH -- TILE, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-210",
+          "name": "CLOSET (210)",
+          "polygon": null,
+          "sf": 7,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: CLOSET -- TILE, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-209A",
+          "name": "HALL (209A)",
+          "polygon": null,
+          "sf": 15,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: HALL -- TILE, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-211",
+          "name": "TOILET RM (211)",
+          "polygon": null,
+          "sf": 19,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: TOILET RM -- TILE, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-307",
+          "name": "LIVING (307)",
+          "polygon": null,
+          "sf": 362,
+          "status": "draw_needed",
+          "material": "EXIST. WD. REFINNISH",
+          "evidence": {
+            "schedule_row": "Finish schedule: LIVING -- EXIST. WD. REFINNISH, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-305",
+          "name": "KITCHEN (305)",
+          "polygon": null,
+          "sf": 174,
+          "status": "draw_needed",
+          "material": "EXIST. WD. REFINNISH",
+          "evidence": {
+            "schedule_row": "Finish schedule: KITCHEN -- EXIST. WD. REFINNISH, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-304",
+          "name": "RESTROOM (304)",
+          "polygon": null,
+          "sf": 29,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: RESTROOM -- TILE, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-301",
+          "name": "STAIR (301)",
+          "polygon": null,
+          "sf": 71,
+          "status": "draw_needed",
+          "material": "-",
+          "evidence": {
+            "schedule_row": "Finish schedule: STAIR -- -, base -",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-302",
+          "name": "ELEV 3 (302)",
+          "polygon": null,
+          "sf": 16,
+          "status": "draw_needed",
+          "material": "-",
+          "evidence": {
+            "schedule_row": "Finish schedule: ELEV 3 -- -, base -",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-308",
+          "name": "BEDROOM 3 (308)",
+          "polygon": null,
+          "sf": 157,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: BEDROOM 3 -- NEW WOOD FLOOR, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-309",
+          "name": "BATH (309)",
+          "polygon": null,
+          "sf": 62,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: BATH -- NEW WOOD FLOOR, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-306",
+          "name": "DINING (306)",
+          "polygon": null,
+          "sf": 229,
+          "status": "draw_needed",
+          "material": "EXIST. WD. REFINNISH",
+          "evidence": {
+            "schedule_row": "Finish schedule: DINING -- EXIST. WD. REFINNISH, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-303",
+          "name": "CORRIDOR (303)",
+          "polygon": null,
+          "sf": 94,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: CORRIDOR -- NEW WOOD FLOOR, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-308A",
+          "name": "CLOSET (308A)",
+          "polygon": null,
+          "sf": 48,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: CLOSET -- NEW WOOD FLOOR, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-403",
+          "name": "KITCHEN (403)",
+          "polygon": null,
+          "sf": 62,
+          "status": "draw_needed",
+          "material": "TILE",
+          "evidence": {
+            "schedule_row": "Finish schedule: KITCHEN -- TILE, base W8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-402",
+          "name": "ELEV. 4 (402)",
+          "polygon": null,
+          "sf": 16,
+          "status": "draw_needed",
+          "material": "-",
+          "evidence": {
+            "schedule_row": "Finish schedule: ELEV. 4 -- -",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-404",
+          "name": "COVERED DECK (404)",
+          "polygon": null,
+          "sf": 176,
+          "status": "draw_needed",
+          "material": "EXISTING PAVERS",
+          "evidence": {
+            "schedule_row": "Finish schedule: COVERED DECK -- EXISTING PAVERS, base -",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-405",
+          "name": "OUTDOOR DECK (405)",
+          "polygon": null,
+          "sf": 778,
+          "status": "draw_needed",
+          "material": "EXISTING AND NEW PAVERS",
+          "evidence": {
+            "schedule_row": "Finish schedule: OUTDOOR DECK -- EXISTING AND NEW PAVERS, base -",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        },
+        {
+          "id": "24-06748-RNVS-schedule-401",
+          "name": "STAIR (401)",
+          "polygon": null,
+          "sf": 49,
+          "status": "draw_needed",
+          "material": "NEW WOOD FLOOR",
+          "evidence": {
+            "schedule_row": "Finish schedule: STAIR -- NEW WOOD FLOOR, base WD 8",
+            "why_flagged": "No plan geometry on this permit's takeoff pass covers this room -- area is from the finish schedule only, not measured. Needs a boundary drawn."
+          },
+          "sf_source": "schedule"
+        }
+      ]
+    }
+  ]
+}

@@ -26,6 +26,21 @@ from probe30_extract_worker import extract_all_segments, compute_features  # noq
 
 MIN_SEG_FRAC = 0.006  # same minimum-length-to-count-as-a-wall-candidate probe25 used
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_MODEL_PATH = os.path.join(ROOT, "models", "wall_model_v2.joblib")
+DEFAULT_THRESHOLD = 0.8  # train-side best-F1 threshold chosen in probe30_train.py;
+                          # override with the value in data/probe30/segment_results.json
+                          # ["fixed_model"]["canonical_threshold"] if that file is regenerated
+
+
+def load_wall_model_v2(model_path=DEFAULT_MODEL_PATH):
+    """Small loader fn (per probe30 spec): returns the fitted
+    HistGradientBoostingClassifier trained on probe30's 10 'fixed' features
+    (see probe30_extract_worker.FEATURE_NAMES_FIXED). Use with
+    run_geometry_engine_model(..., clf=load_wall_model_v2(), threshold=0.8)."""
+    import joblib
+    return joblib.load(model_path)
+
 
 def predict_wall_mask(pdf_path, page_index, clf, feet_per_pt, threshold=0.5):
     """Runs the SAME feature pipeline used at training time (probe30's

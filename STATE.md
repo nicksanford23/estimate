@@ -512,3 +512,26 @@ and `python3 scripts/pipeline.py board`.
 - NEXT: ML training run v2 (probe25 harness) on the 80-permit roster,
   per improvement-loop skill gates. The 7 UNCLEAR permits are a cheap
   follow-up eyeball if anyone wants a couple more before training.
+
+## PROBE 30 — first wall-model training run (2026-07-10 ~02:00 UTC)
+- Trained on 69 verified layered permits / 10 firm-diverse holdout
+  (data/probe30/roster.csv). Model: models/wall_model_v2.joblib (+R2 backup
+  claude-repo/models/), loader scripts/geometry_model.py.
+- Segment PR-AUC holdout: 0.34 pooled (3x the 0.11 probe-25 baseline) but
+  firm-spiky (0.10-0.98). Ablation: the bucketed-stroke/feet fixes did NOT
+  help (raw 0.359) — honest negative.
+- LEARNING CURVE FLAT (15->69 permits: ~0.38 flat). Per diagnose gates:
+  ENGINEER, don't just add same-vocabulary data. This REVISES the earlier
+  "more firms fixes it" conviction — vector-feature approach is near its
+  ceiling; next lever is architecture (graph/neural over vectors, or raster
+  U-Net) not volume.
+- Holdout-vs-layer-truth downstream: 2.6% rooms matched — segment gains
+  don't survive polygonize on unseen firms. Bank canary poor (1/18 anchors),
+  hotel canary good (15/17).
+- PROMOTION GATE (TRUTH_AREA 4 permits/182 rooms, same grader as v4):
+  model beats rules-v4 on ALL THREE: missed 26.4% vs 33.5%, matched<=30%
+  29 vs 7, median err 24.6% vs 30.6% (non-uniform: worse on 24-06748).
+- DECISION (Fable): CONDITIONAL PROMOTE as an ADDITIONAL candidate engine —
+  dual-run rules-v4 + model, prefer whichever anchors more rooms, route
+  disagreements to review; do NOT retire v4. Integration queued.
+  Full writeup: experiments/probe30_wall_model_v2.md.
