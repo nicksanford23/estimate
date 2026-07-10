@@ -8,6 +8,8 @@
     {
       "id": "1494156_p3",
       "image": "/demo/14-11290-NEWC.png",
+      "image_width": 2600,
+      "image_height": 1734,
       "feet_per_pixel": 0.05538,
       "rooms": [
         {
@@ -788,11 +790,12 @@
             ]
           ],
           "sf": 46.9,
-          "status": "accepted",
+          "status": "review",
           "material": "Carpet",
           "evidence": {
             "schedule_row": "Finish schedule: Carpet (CP-2)",
-            "why_flagged": "Dimension cross-check: 47 vs 37 SF."
+            "printed_dim": "Printed-dimension cross-check: geometry measured 47 SF, but the printed dimensions work out to ~37 SF.",
+            "why_flagged": "Measured area disagrees with the printed dimensions -- check the boundary."
           }
         },
         {
@@ -905,11 +908,12 @@
             ]
           ],
           "sf": 124.9,
-          "status": "accepted",
+          "status": "review",
           "material": "Carpet",
           "evidence": {
             "schedule_row": "Finish schedule: Carpet (CP-1)",
-            "why_flagged": "Dimension cross-check: 125 vs 100 SF."
+            "printed_dim": "Printed-dimension cross-check: geometry measured 125 SF, but the printed dimensions work out to ~100 SF.",
+            "why_flagged": "Measured area disagrees with the printed dimensions -- check the boundary."
           }
         },
         {
@@ -946,10 +950,11 @@
             ]
           ],
           "sf": 30.9,
-          "status": "accepted",
+          "status": "draw_needed",
           "material": "Ceramic tile",
           "evidence": {
-            "schedule_row": "Finish schedule: Ceramic tile (CT-1)"
+            "schedule_row": "Finish schedule: Ceramic tile (CT-1)",
+            "why_flagged": "Geometry closed only a fragment of this room -- the storefront/door edge confused the engine. The boundary needs to be redrawn."
           }
         }
       ]

@@ -8,6 +8,8 @@
     {
       "id": "9058456_p18",
       "image": "/demo/26-10321-RNVN.png",
+      "image_width": 2600,
+      "image_height": 1734,
       "feet_per_pixel": 0.11077,
       "rooms": [
         {
@@ -667,8 +669,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly1",
@@ -863,8 +866,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly4",
@@ -903,8 +907,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly5",
@@ -935,8 +940,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly6",
@@ -971,8 +977,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly7",
@@ -1003,8 +1010,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly8",
@@ -1043,8 +1051,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly9",
@@ -1083,8 +1092,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly10",
@@ -1119,80 +1129,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly11",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              611.0,
-              773.5
-            ],
-            [
-              539.5,
-              773.5
-            ],
-            [
-              533.0,
-              780.0
-            ],
-            [
-              656.5,
-              780.0
-            ],
-            [
-              669.5,
-              747.5
-            ],
-            [
-              617.5,
-              747.5
-            ]
-          ],
-          "sf": 25.7,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly12",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              1794.0,
-              598.0
-            ],
-            [
-              1729.0,
-              598.0
-            ],
-            [
-              1742.0,
-              617.5
-            ],
-            [
-              1748.5,
-              630.5
-            ],
-            [
-              1787.5,
-              630.5
-            ],
-            [
-              1787.5,
-              604.5
-            ]
-          ],
-          "sf": 19.4,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly13",
@@ -1223,36 +1162,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly14",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              1469.0,
-              617.5
-            ],
-            [
-              1469.0,
-              695.5
-            ],
-            [
-              1488.5,
-              695.5
-            ],
-            [
-              1488.5,
-              617.5
-            ]
-          ],
-          "sf": 18.7,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly15",
@@ -1287,76 +1199,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly16",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              1404.0,
-              695.5
-            ],
-            [
-              1404.0,
-              611.0
-            ],
-            [
-              1378.0,
-              611.0
-            ],
-            [
-              1378.0,
-              643.5
-            ],
-            [
-              1378.0,
-              685.1
-            ]
-          ],
-          "sf": 25.3,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly17",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              1222.0,
-              695.5
-            ],
-            [
-              1222.0,
-              617.5
-            ],
-            [
-              1202.5,
-              617.5
-            ],
-            [
-              1202.5,
-              780.0
-            ],
-            [
-              1222.0,
-              747.5
-            ],
-            [
-              1222.0,
-              702.0
-            ]
-          ],
-          "sf": 35.0,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly18",
@@ -1631,8 +1476,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly19",
@@ -1667,8 +1513,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly20",
@@ -1731,64 +1578,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly21",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              1404.0,
-              780.0
-            ],
-            [
-              1404.0,
-              702.0
-            ],
-            [
-              1378.0,
-              686.4
-            ],
-            [
-              1378.0,
-              767.0
-            ]
-          ],
-          "sf": 25.3,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly22",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              981.5,
-              747.5
-            ],
-            [
-              981.5,
-              695.5
-            ],
-            [
-              942.5,
-              695.5
-            ],
-            [
-              942.5,
-              747.5
-            ]
-          ],
-          "sf": 24.9,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly23",
@@ -1823,8 +1615,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly24",
@@ -1851,8 +1644,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly25",
@@ -1931,34 +1725,6 @@
           }
         },
         {
-          "id": "26-10321-RNVN-poly27",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              747.5,
-              617.5
-            ],
-            [
-              747.5,
-              695.5
-            ],
-            [
-              773.5,
-              715.0
-            ],
-            [
-              773.5,
-              611.0
-            ]
-          ],
-          "sf": 29.0,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
           "id": "26-10321-RNVN-poly28",
           "name": "Unlabeled area",
           "polygon": [
@@ -2011,40 +1777,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly29",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              617.5,
-              747.5
-            ],
-            [
-              669.5,
-              747.5
-            ],
-            [
-              669.5,
-              702.0
-            ],
-            [
-              650.0,
-              702.0
-            ],
-            [
-              617.5,
-              702.0
-            ]
-          ],
-          "sf": 29.0,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly30",
@@ -2075,8 +1810,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly31",
@@ -2279,36 +2015,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly32",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              747.5,
-              702.0
-            ],
-            [
-              747.5,
-              773.5
-            ],
-            [
-              773.5,
-              767.0
-            ],
-            [
-              773.5,
-              715.0
-            ]
-          ],
-          "sf": 19.7,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly33",
@@ -2507,8 +2216,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly34",
@@ -2759,8 +2469,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly38",
@@ -2915,40 +2626,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly40",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              799.5,
-              1105.0
-            ],
-            [
-              806.0,
-              1105.0
-            ],
-            [
-              806.0,
-              910.0
-            ],
-            [
-              799.5,
-              910.0
-            ],
-            [
-              799.5,
-              988.0
-            ]
-          ],
-          "sf": 15.6,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly41",
@@ -3047,8 +2727,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly42",
@@ -3151,8 +2832,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly43",
@@ -3235,64 +2917,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly44",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              2060.5,
-              292.5
-            ],
-            [
-              2060.5,
-              338.0
-            ],
-            [
-              2060.5,
-              383.5
-            ],
-            [
-              2060.5,
-              422.5
-            ],
-            [
-              2060.5,
-              429.0
-            ],
-            [
-              2060.5,
-              435.5
-            ],
-            [
-              2060.5,
-              474.5
-            ],
-            [
-              2060.5,
-              520.0
-            ],
-            [
-              2060.5,
-              533.0
-            ],
-            [
-              2067.0,
-              565.5
-            ],
-            [
-              2067.0,
-              292.5
-            ]
-          ],
-          "sf": 20.5,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly45",
@@ -3439,42 +3066,6 @@
           }
         },
         {
-          "id": "26-10321-RNVN-poly48",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              539.5,
-              292.5
-            ],
-            [
-              533.0,
-              292.5
-            ],
-            [
-              533.0,
-              403.0
-            ],
-            [
-              533.0,
-              409.5
-            ],
-            [
-              533.0,
-              500.5
-            ],
-            [
-              539.5,
-              500.5
-            ]
-          ],
-          "sf": 16.6,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
           "id": "26-10321-RNVN-poly49",
           "name": "Unlabeled area",
           "polygon": [
@@ -3555,8 +3146,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly50",
@@ -3640,34 +3232,6 @@
           "material": "LVT",
           "evidence": {
             "schedule_row": "Finish schedule: LVT (LVT)"
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly52",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              2067.0,
-              884.0
-            ],
-            [
-              2067.0,
-              923.0
-            ],
-            [
-              2106.0,
-              916.5
-            ],
-            [
-              2106.0,
-              877.5
-            ]
-          ],
-          "sf": 18.7,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
           }
         },
         {
@@ -3847,8 +3411,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly56",
@@ -3927,8 +3492,9 @@
           "status": "review",
           "material": null,
           "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
+            "why_flagged": "Closed shape with no room-number anchor -- may be a real room whose label sits outside the boundary, or drawing artifact. Not counted in any total."
+          },
+          "unlabeled": true
         },
         {
           "id": "26-10321-RNVN-poly57",
@@ -3980,42 +3546,6 @@
           "material": "LVT",
           "evidence": {
             "schedule_row": "Finish schedule: LVT (LVT)"
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly58",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              864.5,
-              455.0
-            ],
-            [
-              1105.0,
-              455.0
-            ],
-            [
-              1072.5,
-              448.5
-            ],
-            [
-              1046.5,
-              448.5
-            ],
-            [
-              1040.0,
-              448.5
-            ],
-            [
-              864.5,
-              448.5
-            ]
-          ],
-          "sf": 17.9,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
           }
         },
         {
@@ -4082,62 +3612,6 @@
           "material": "Carpet",
           "evidence": {
             "schedule_row": "Finish schedule: Carpet (C1)"
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly61",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              2054.0,
-              1384.5
-            ],
-            [
-              2158.0,
-              1384.5
-            ],
-            [
-              2158.0,
-              1371.5
-            ],
-            [
-              2054.0,
-              1371.5
-            ]
-          ],
-          "sf": 16.6,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
-          }
-        },
-        {
-          "id": "26-10321-RNVN-poly62",
-          "name": "Unlabeled area",
-          "polygon": [
-            [
-              2158.0,
-              1391.0
-            ],
-            [
-              2054.0,
-              1391.0
-            ],
-            [
-              2054.0,
-              1410.5
-            ],
-            [
-              2158.0,
-              1410.5
-            ]
-          ],
-          "sf": 24.9,
-          "status": "review",
-          "material": null,
-          "evidence": {
-            "why_flagged": "Engine closed a room-sized shape here but could not confidently match a room number to it."
           }
         }
       ]

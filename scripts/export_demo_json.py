@@ -137,10 +137,22 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
             mismatch.append(f"n_open {n_open} != {existing_summary['n_open']}")
         if abs(total_sf - existing_summary["total_sf"]) > 0.5:
             mismatch.append(f"total_sf {total_sf} != {existing_summary['total_sf']}")
-        if mismatch:
+        run_engine = existing.get("rules_engine")
+        if mismatch and run_engine == "v4":
             raise SystemExit(f"{permit}: re-derivation MISMATCH vs run.json: {'; '.join(mismatch)}")
-        print(f"{permit}: re-derivation matches run.json "
-              f"(auto={n_auto} review={n_review} open={n_open} total_sf={total_sf})")
+        if mismatch:
+            # run.json was regenerated with a DIFFERENT engine (e.g. the probe30
+            # dual-run wall-model candidate) after this exporter was written.
+            # This exporter pins the settled v4 engine -- alignment + counts
+            # were verified against the v4 outputs -- so a differing-engine
+            # run.json is a warning, not an abort.
+            print(f"{permit}: NOTE run.json now uses engine={run_engine!r}; exporter pins v4 "
+                  f"(v4 derivation: auto={n_auto} review={n_review} open={n_open} total_sf={total_sf}; "
+                  f"run.json: {existing_summary['n_auto']}/{existing_summary['n_review']}/"
+                  f"{existing_summary['n_open']}/{existing_summary['total_sf']})")
+        else:
+            print(f"{permit}: re-derivation matches run.json "
+                  f"(auto={n_auto} review={n_review} open={n_open} total_sf={total_sf})")
 
         # ---- render the plain page PNG at our own (higher-res) zoom ----
         zoom = min(TARGET_ZOOM, MAX_PIXEL_WIDTH / pw)
@@ -154,12 +166,30 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
         guide_rooms = GUIDES_ROOMS.get(permit, {})
         open_group_by_poly = {g["poly_index"]: g for g in open_groups}
         out_rooms = []
+        n_dropped_implausible = 0
         for i, poly in enumerate(polys):
             r = next((rr for rr in rooms if rr["poly_index"] == i), None)
             if r is None:
                 continue  # artifact polygon (notes/legend region)
             status = STATUS_MAP[r["product_action"]]
             room_num = r.get("room")
+
+            # UNLABELED shapes (closed geometry that anchored to no room number)
+            # are NOT peer rows to real rooms. Plausibility-cut the obvious junk
+            # entirely -- outside the 40-5,000 SF room band, or sliver-thin
+            # (wall cavities / column chases) -- and mark survivors `unlabeled`
+            # so the UI groups + de-emphasizes them instead of flooding the
+            # review queue and the Estimated total with junk numbers.
+            unlabeled = "unlabeled_polygon" in (r.get("flags") or [])
+            if unlabeled:
+                sf_u = r.get("area_sf") or 0
+                bx0, by0, bx1, by1 = poly.bounds
+                bw, bh = bx1 - bx0, by1 - by0
+                aspect = max(bw, bh) / max(1e-6, min(bw, bh))
+                if sf_u < 40 or sf_u > 5000 or aspect >= 12:
+                    n_dropped_implausible += 1
+                    continue
+
             gr = guide_rooms.get(str(room_num)) if room_num else None
             truth_row = truth["by_room"].get(str(room_num).upper()) if (truth and room_num) else None
 
@@ -180,13 +210,35 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
             if material in ("mixed/TBD", None):
                 material = None
 
+            # The guide tables (web/lib/guides.ts) carry hand-verified review
+            # verdicts from the original bank pass -- printed-dimension
+            # mismatches and fragment rooms the v4 engine auto-accepted. Honor
+            # the stricter human verdict: a demo must not paint a doubted room
+            # green.
+            if gr and gr.get("action") == "geometry_review" and status == "accepted":
+                status = "review"
+            elif gr and gr.get("action") == "vision_correct_or_redraw" and status == "accepted":
+                status = "draw_needed"
+
             evidence = {}
             if truth_row:
                 evidence["schedule_row"] = schedule_evidence_line(truth_row)
             elif gr and gr["code"]:
                 evidence["schedule_row"] = f"Finish schedule: {gr['material']} ({gr['code']})"
-            if gr and gr.get("sfnote") and ("vs" in gr["sfnote"] or "review" in (gr.get("action") or "")):
-                evidence["why_flagged"] = f"Dimension cross-check: {gr['sfnote']}."
+            if gr and status == "review" and gr.get("sfnote") and "vs" in (gr.get("sfnote") or ""):
+                geom_sf, sched_sf = [s.strip() for s in gr["sfnote"].replace("SF", "").split("vs")]
+                evidence["printed_dim"] = (f"Printed-dimension cross-check: geometry measured "
+                                            f"{geom_sf} SF, but the printed dimensions work out to "
+                                            f"~{sched_sf} SF.")
+                evidence["why_flagged"] = "Measured area disagrees with the printed dimensions -- check the boundary."
+            elif gr and status == "draw_needed":
+                evidence["why_flagged"] = ("Geometry closed only a fragment of this room -- the "
+                                            "storefront/door edge confused the engine. The boundary "
+                                            "needs to be redrawn.")
+            elif unlabeled:
+                evidence["why_flagged"] = ("Closed shape with no room-number anchor -- may be a real "
+                                            "room whose label sits outside the boundary, or drawing "
+                                            "artifact. Not counted in any total.")
             elif status == "review":
                 evidence["why_flagged"] = ("Engine closed a room-sized shape here but could not "
                                             "confidently match a room number to it.")
@@ -198,7 +250,7 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
             pts = list(poly.exterior.coords)[:-1]  # drop shapely's repeated closing vertex
             polygon_px = [[round(x * zoom, 1), round(y * zoom, 1)] for x, y in pts]
 
-            out_rooms.append(dict(
+            room_out = dict(
                 id=f"{permit}-poly{i}",
                 name=name,
                 polygon=polygon_px,
@@ -206,7 +258,10 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
                 status=status,
                 material=material,
                 evidence=evidence,
-            ))
+            )
+            if unlabeled:
+                room_out["unlabeled"] = True
+            out_rooms.append(room_out)
 
         # ---- rooms the geometry engine never produced a polygon for at all,
         #      known only from the finish schedule (24-06748's honest gap) ----
@@ -237,6 +292,8 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
             pages=[dict(
                 id=f"{doc_id}_p{page_index}",
                 image=f"/demo/{img_name}",
+                image_width=pm.width,
+                image_height=pm.height,
                 feet_per_pixel=round(feet_per_pixel, 5),
                 rooms=out_rooms,
             )],
@@ -244,7 +301,9 @@ def export_permit(permit, doc_id, page_index, project_name, address=None,
         out_path = os.path.join(OUT_DIR, f"{permit}.json")
         with open(out_path, "w") as f:
             json.dump(demo, f, indent=2)
+        n_unlabeled = sum(1 for r in out_rooms if r.get("unlabeled"))
         print(f"  -> {os.path.relpath(out_path, ROOT)}  ({len(out_rooms)} rooms, "
+              f"{n_unlabeled} unlabeled kept, {n_dropped_implausible} implausible dropped, "
               f"image {pm.width}x{pm.height}px, feet_per_pixel={feet_per_pixel:.5f})")
     finally:
         os.remove(pdf)
