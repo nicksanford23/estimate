@@ -36,6 +36,9 @@ export default function RootLayout({
             <Link href="/permits" className="link">
               Permits
             </Link>
+            <Link href="/ops" className="link">
+              Ops
+            </Link>
             <span className="spacer" />
             <span className="link mono" style={{ fontSize: 12 }}>
               NOLA · commercial
