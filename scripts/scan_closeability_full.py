@@ -79,17 +79,51 @@ CORE_MIN = 60  # a usable page needs at least this many clean core segments
 _wlock = threading.Lock()
 
 BAD_TITLE_LINE = re.compile(
-    r"^(BUILDING\s+)?(EXTERIOR\s+|INTERIOR\s+)?ELEVATIONS?$|"
-    r"^(BUILDING\s+|WALL\s+)?SECTIONS?$|"
-    r"^ROOF\s+(PLAN|FRAMING\s+PLAN)$|"
-    r"^(REFLECTED\s+)?CEILING\s+PLAN$|"
-    r"^DEMOLITION\s+PLAN$|"
-    r"^(DETAIL|SCHEDULE|LEGEND)S?$|"
-    r"^SITE\s+PLAN$|"
-    r"^(FOUNDATION|FRAMING)\s+PLAN$",
+    # substring (not anchored ^...$) so trailing/leading qualifiers like
+    # "PART A", street names, or a "2ND FLOOR" prefix don't hide a match
+    # (probe: "ROOF FRAMING PLAN PART A", "Fifth Floor RCP Plan",
+    # "RIGHT SIDE ELEVATION", "2ND FLOOR REFLECTED CEILING PLAN" all missed
+    # the old ^...$ anchors)
+    r"ELEVATIONS?\b|"
+    r"(BUILDING\s+|WALL\s+)?SECTIONS?\b|"
+    r"ROOF\s+(PLAN|FRAMING)|"
+    r"(REFLECTED\s+)?CEILING\s+PLAN|\bRCP\b|"
+    r"DEMOLITION\s+PLAN|"
+    r"^(DETAIL|SCHEDULE|LEGEND)S?$|"  # kept anchored: bare single words, too
+                                      # generic to safely substring-match
+    r"SITE\s+PLAN|PLOT\s+PLAN|GRADING\s+PLAN|"
+    r"(FOUNDATION|FRAMING)\s+PLAN|"
+    # MEP/civil disciplines: reliably NOT a floor plan in this corpus (pipe/
+    # duct/joist/plant-bed linework, not room-wall geometry) -- unlike
+    # ELECTRICAL/POWER/LIGHTING/LIFE-SAFETY sheets (see below), these almost
+    # never carry a real reused architectural wall xref (verdict slice
+    # audit: PLUMBING/MECHANICAL/HVAC/SPRINKLER/FIRE/SEWER/LANDSCAPE/FRAMING
+    # false-pass rate ~85-100%, 0-1 counterexample each)
+    r"\bPLUMBING\b|\bMECHANICAL\b|\bHVAC\b|\bSPRINKLER\b|"
+    r"FIRE\s+(PROTECTION|ALARM)|\bSEWER\b|\bSANITARY\b|"
+    r"\bLANDSCAPE\b|\bPLANTING\b|"
+    # ELECTRICAL/POWER/LIGHTING/LIFE SAFETY are a WEAKER signal here (verdict
+    # audit: ~13 CONFIRMED vs 20 FALSE_PASS electrical, ~6 vs 4 power, ~3 vs 4
+    # life-safety -- these disciplines commonly overlay the SAME real
+    # architectural wall xref, so roughly a coin flip). Included per the
+    # calibration brief anyway: this only affects re-ranking a permit that
+    # is ALREADY in the false-pass set (frozen CONFIRMED rows are never
+    # re-scored), so the cost of a miss is "no recovery found", not a
+    # regression -- but it means some real MEP-titled recoveries will be
+    # left on the table; flagged in the report, not silently eaten.
+    r"\bELECTRICAL\b|\bPOWER\b|\bLIGHTING\b|LIFE\s+SAFETY",
     re.I)
 GOOD_TITLE_LINE = re.compile(
     r"FLOOR\s+PLAN|^LEVEL\s+\d|UNIT\s+PLAN|TENANT\s+(LAYOUT|PLAN)|ENLARGED.*PLAN",
+    re.I)
+# Narrow sub-check used only to veto the whitelist below: an *actual*
+# roof-framing/reflected-ceiling/foundation-framing TITLE, not just the
+# bare word "CEILING"/"FRAMING" appearing in an ordinary partition-detail
+# note (e.g. "...WITH SOUND BATTS FROM FLOOR SLAB TO 6\" ABOVE CEILING" is a
+# routine wall-assembly callout on the bank's real floor-plan page, not a
+# reflected-ceiling-plan title -- must not disable the whitelist).
+FRAMING_ISH_TITLE = re.compile(
+    r"ROOF\s+(PLAN|FRAMING)|(REFLECTED\s+)?CEILING\s+PLAN|(FOUNDATION|FRAMING)\s+PLAN",
     re.I)
 
 
@@ -102,12 +136,27 @@ def title_flag(pdf, page_index):
         doc.close()
     except Exception:
         return False
-    # "SEE FLOOR PLAN(S)..." keynote lines are references, not titles
-    saw_good = any(GOOD_TITLE_LINE.search(l) and len(l) < 60
-                   and not re.search(r"\bSEE\b", l, re.I) for l in lines)
-    if saw_good:
+    # Only consider short, title-block-like lines for BOTH checks -- "SEE
+    # FLOOR PLAN(S)..."/"SEE ELECTRICAL"/"SEE PLUMBING DRAWINGS" keynote
+    # lines are cross-references, not the page's own title, and long note
+    # sentences that happen to contain a discipline word are not titles.
+    titly = [l for l in lines if len(l) < 60 and not re.search(r"\bSEE\b", l, re.I)]
+    # Whitelist override: if the page reads as a genuine floor plan (FLOOR
+    # PLAN / LEVEL N / UNIT PLAN / TENANT LAYOUT / ENLARGED...PLAN) it's
+    # never bad -- protects real architectural floor-plan sheets (bank's
+    # "PARTIAL FLOOR PLAN - BRANCH", 25-33341's "FIRST/SECOND FLOOR PLAN")
+    # from any incidental MEP/civil keyword found elsewhere on the same page
+    # (e.g. "ELECTRICAL SERVICE", "LANDSCAPE AREA" callouts on the bank page).
+    # EXCEPT: checked page-level, not line-level -- a bare "LEVEL 2" facility
+    # label (common on structural/MEP sheets too, not just floor plans) must
+    # not rescue a page that ALSO carries a real REFLECTED/CEILING/FRAMING
+    # title elsewhere (probe: 19-36884-RNVS "2ND LEVEL FRAMING PLAN" sheet
+    # also prints a bare "LEVEL 2" field -- that alone must not whitelist it).
+    saw_good = any(GOOD_TITLE_LINE.search(l) for l in titly)
+    framing_ish = any(FRAMING_ISH_TITLE.search(l) for l in titly)
+    if saw_good and not framing_ish:
         return False
-    return any(BAD_TITLE_LINE.match(l) for l in lines)
+    return any(BAD_TITLE_LINE.search(l) for l in titly)
 
 
 def extract_by_layer(pdf, page_index):
