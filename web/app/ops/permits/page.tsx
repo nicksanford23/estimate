@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { buildPermitRows, type PermitRow } from "@/lib/opsData";
 import { q } from "@/lib/db";
+import { getPermitDisplayNames } from "@/lib/opsNames";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export default async function OpsPermitsPage({ searchParams }: { searchParams: S
   if (stage === "discovered") {
     const { total, rows } = await discoveredStageRows(search, page);
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const names = await getPermitDisplayNames(rows.map((r) => r.permit_num));
     return (
       <main>
         <StageHeader stage={stage} label={stageLabel[stage]} total={total} search={search} />
@@ -85,7 +87,10 @@ export default async function OpsPermitsPage({ searchParams }: { searchParams: S
               {rows.map((r) => (
                 <tr key={r.permit_num} className="rowlink">
                   <td>
-                    <Link href={`/ops/permits/${encodeURIComponent(r.permit_num)}`}>{r.permit_num}</Link>
+                    <Link href={`/ops/permits/${encodeURIComponent(r.permit_num)}`} title={r.permit_num}>
+                      {names.get(r.permit_num) ?? r.permit_num}
+                    </Link>
+                    <div className="row-subtext mono-num">{r.permit_num}</div>
                   </td>
                   <td className="mono-num">{fmt(r.n_docs)}</td>
                   <td className="mono-num">{r.first_seen?.slice(0, 19).replace("T", " ") ?? "—"}</td>
@@ -145,6 +150,7 @@ export default async function OpsPermitsPage({ searchParams }: { searchParams: S
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const names = await getPermitDisplayNames(pageRows.map((r) => r.permit));
 
   const th = (col: string, label: string) => (
     <th>
@@ -185,7 +191,10 @@ export default async function OpsPermitsPage({ searchParams }: { searchParams: S
             {pageRows.map((r) => (
               <tr key={r.permit} className="rowlink">
                 <td>
-                  <Link href={`/ops/permits/${encodeURIComponent(r.permit)}`}>{r.permit}</Link>
+                  <Link href={`/ops/permits/${encodeURIComponent(r.permit)}`} title={r.permit}>
+                    {names.get(r.permit) ?? r.permit}
+                  </Link>
+                  <div className="row-subtext mono-num">{r.permit}</div>
                 </td>
                 <td className="wrap">{r.tier ?? <span className="dash">—</span>}</td>
                 <td>

@@ -379,3 +379,45 @@ table.ops-table td.wrap { white-space: normal; }
 .lightbox-bar .tools button:disabled { opacity: 0.35; }
 .lightbox-stage { flex: 1; overflow: auto; background: #fff; overscroll-behavior: contain; }
 .lightbox-stage img { display: block; width: 100%; height: auto; }
+
+/* Permit Workbench: tabs + checklist chips + Pages tab thumbnail/label UI */
+.workbench-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 18px 0 0; flex-wrap: wrap; }
+.workbench-tab { font-family: var(--font-mono); font-size: 12.5px; padding: 9px 14px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.workbench-tab.active { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.workbench-tab .wt-count { font-size: 10.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 1px 6px; }
+.workbench-panel { padding-top: 4px; }
+
+.checklist-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.checklist-chip { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 8px 12px; min-width: 120px; }
+.checklist-label { display: block; font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.checklist-value { display: block; font-size: 14px; font-weight: 600; margin-top: 2px; }
+.checklist-chip.state-done { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.checklist-chip.state-done .checklist-value { color: var(--good); }
+.checklist-chip.state-partial .checklist-value { color: var(--warn); }
+.checklist-chip.state-none .checklist-value { color: var(--bad); }
+.checklist-chip.state-unknown .checklist-value { color: var(--muted); }
+
+.pages-tab details { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+.pages-doc-summary { padding: 10px 14px; cursor: pointer; font-size: 13.5px; }
+.pages-doc-summary .pc { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; font-weight: 400; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 12px; }
+.thumb-card { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 0; cursor: pointer; display: flex; flex-direction: column; text-align: left; overflow: hidden; }
+.thumb-card:hover { border-color: var(--accent); }
+.thumb-card img { width: 100%; aspect-ratio: 17 / 22; object-fit: cover; object-position: top; display: block; background: #fff; }
+.thumb-cap { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding: 5px 7px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.label-chip { display: inline-block; margin: 3px 7px 6px; font-family: var(--font-mono); font-size: 10px; padding: 2px 7px; border-radius: 10px; }
+.label-chip.unlabeled { color: var(--muted); background: var(--surface-2); }
+.label-chip.keep { color: var(--good); background: var(--good-bg); }
+.label-chip.nokeep { color: var(--muted); background: var(--surface-2); }
+.suggest-chip { display: block; font-size: 9.5px; color: var(--accent-ink); padding: 0 7px 6px; font-style: italic; }
+
+.label-picker { background: var(--surface); border-top: 1px solid var(--line); padding: 12px; max-height: 40vh; overflow-y: auto; }
+.label-picker-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.label-picker-row.suggest-row { background: var(--good-bg); border-radius: 8px; padding: 7px 10px; }
+.label-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.label-btn { font-family: var(--font-mono); font-size: 11.5px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.label-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.label-btn.suggested:not(.active) { border-color: var(--accent); color: var(--accent-ink); }
+.label-btn:disabled { opacity: 0.6; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.legend-item kbd { font-family: var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-right: 3px; }

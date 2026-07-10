@@ -361,6 +361,25 @@ export function readDownloaderBacklog(): DownloaderBacklog {
   return out;
 }
 
+// "Materials joined" checklist chip: yes iff a per-permit materials join or
+// truth-area file exists on disk (both are small triage artifacts, cheap
+// existsSync checks — no parsing needed for a yes/no chip).
+export function materialsJoined(permit: string): boolean {
+  return (
+    fs.existsSync(D("data/triage/materials", `${permit}.json`)) ||
+    fs.existsSync(D("data/triage/truth_area", `${permit}.json`))
+  );
+}
+
+// Pre-filled label suggestions for the Pages tab (data/triage/label_proposals_<permit>.json,
+// map of page_index -> {label, evidence, source}). Absent = no suggestions.
+export type LabelProposal = { label: string; evidence: string; source?: string };
+export function loadLabelProposals(permit: string): Record<string, LabelProposal> {
+  return (
+    readJson<Record<string, LabelProposal>>(`data/triage/label_proposals_${permit}.json`) ?? {}
+  );
+}
+
 // ------------------------------------------------------------- overlays --
 // Directories the mission whitelists for overlay/render images, scanned
 // (non-recursively) for filenames containing the permit number.
