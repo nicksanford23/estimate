@@ -281,3 +281,142 @@ permit            path    auto  rev  open  art  total_sf
 for traceability -- the CSV schema itself was left unchanged rather than adding
 a new column, since the file is append-only and already has runs under the old
 header.)
+
+## Probe 30 follow-up -- model + dual engines wired in; dual quality-gated; default NOT flipped
+
+**Date:** 2026-07-10. Implements the CONDITIONAL PROMOTE decision from
+`experiments/probe30_wall_model_v2.md` plus a mid-task coordinator amendment
+(external review): wall_model_v2 ships as an ADDITIONAL candidate engine in
+the rules path, never a silent replacement, and the dual arbitration is
+quality-gated so an over-detecting engine can't win on raw anchor count.
+
+### Engine section (updated interface)
+
+`run --engine {v1,v2,v3,v4,model,dual}` (rules path only; the layer path has
+no engine ladder and ignores the flag entirely -- `model`/`dual` never even
+load the classifier for a layer-routed permit; the joblib load is a lazy
+singleton behind `get_wall_model()`).
+
+- **`model`** -- `geometry_model.run_geometry_engine_model`: wall_model_v2
+  (probe30's trained segment classifier, threshold 0.80) picks wall
+  candidates; everything downstream (v2 gap-close/cavity filter ->
+  polygonize -> v4 anchor-cluster proximity reconnection) is the same code
+  the rules engines use.
+- **`dual`** -- runs v4 AND model on the same page, then
+  `reconcile_dual_engines()` per page:
+  1. Each engine's rooms are matched to room-label anchors; an anchored
+     room only COUNTS toward the winner-election score if its polygon
+     passes the QUALITY GATES (amendment): 40-5,000 SF size band, centroid
+     inside the principal drawing region (padded bbox of the room-label
+     text cluster), bbox aspect < 12:1, and no contradiction of the printed
+     dimensions physically inside the polygon by >30% (one agreeing dim is
+     enough to pass).
+  2. Winner = more quality-passing anchored rooms (tie -> v4). The winner's
+     quality-FAILING anchored rooms are demoted to `geometry_review` with
+     the failed gate named.
+  3. Rooms the loser anchored that the winner missed ENTIRELY are appended
+     as `geometry_review` candidates (deduped by loser polygon -- a merged
+     blob anchoring several loser-only tokens is added once), never auto.
+  4. Rooms BOTH engines anchor via uniquely-anchored polygons whose areas
+     disagree >15% are demoted to `geometry_review` ("engines disagree").
+     Multi-token merged blobs are excluded from this comparison (a blob is
+     not a per-room measurement; merges are judged by the open-zone
+     machinery instead).
+  5. If BOTH engines fail quality on >50% of their anchored rooms, the
+     whole page demotes to review.
+
+Provenance: every rules-path room row in `run.json` now carries
+`engine: v4|model|both`; the run summary carries `engine_provenance` counts
+and the scoreboard row carries them in `flags`
+(`engine_provenance=both:1,model:1,v4:10`). Layer-path runs carry NO engine
+key anywhere -- byte-identity below depends on that. `scoreboard.csv` gained
+a `green_precision` column (of rooms marked auto_quantity, fraction within
+15% of truth; graded permits only) -- the header migrates in place, old rows
+backfill blank, content stays append-only.
+
+### Acceptance battery (all runs this session)
+
+**1-2. Layer path, byte-identical -- PASS.** `run 14-11290-NEWC` and
+`run 26-10321-RNVN` with `--engine dual` (and with the model/dual code
+merely present): `run.json` byte-identical to the prior v4-session outputs
+except `generated_at` + the `rules_engine=` label. 13 auto / 1,178.4 SF and
+16 auto / 2,393.9 SF reproduced exactly. The flag does not leak into the
+layer path.
+
+**3. 24-06748-RNVS (rules path), takeoff grader vs truth_area:**
+
+| engine | auto | review | total_sf | truth matched | coverage | med err | green_precision |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| v4 | 5 | 6 | 480.0 | 5/36 | 14% | 56.3% | 1/5 = 20% |
+| model | 0 | 6 (+1 open) | 0.0 | 0/36 | 0% | n/a | n/a |
+| dual | 3 | 9 | 435.5 | 3/36 | 8% | 60.7% | 1/3 = 33% |
+
+Dual = v4's page win with the amendment's gates applied: rooms 202 (18.7sf,
+truth 16sf -- CORRECT but under the 40 SF floor) and 206 (25.8sf, truth 59sf
+-- confidently WRONG, -56%) demoted to review by the size gate; model's
+3-token blob (204/206/207, 161sf) rescued once as review. **The strict bar
+"dual >= max(v4, model) on matched rooms" FAILS on auto count (3 < 5); no
+geometry is lost** (all 5 v4 polygons persist, 2 as flagged review), and
+green_precision improves 20% -> 33% (the demoted 206 was exactly the
+confident-garbage class the amendment targets; the demoted 202 is the
+amendment's floor discarding a real 16sf closet).
+
+**4. TRUTH_AREA product test (probe26-29 grader, fixes 3-6 verbatim,
+`scripts/probe30_product_test_dual.py`, results in
+`data/probe30/product_test/{results_dual,scorecard_dual}.json`):**
+
+| permit | v4: m/le30/cw/miss% | model: m/le30/cw/miss% | dual: m/le30/cw/miss% (+review) |
+|---|---|---|---|
+| 24-06233-RNVS | 2/0/2/38.2 | 6/5/2/23.5 | 5/5/**1**/5.9 (+9) |
+| 20-29653-RNVS | 6/3/7/15.9 | 20/11/7/18.2 | 9/6/**0**/9.1 (+21) |
+| 24-06748-RNVS | 3/2/8/30.6 | 2/1/8/50.0 | 1/1/**5**/27.8 (+7) |
+| 26-05332-NEWC | 3/2/13/44.1 | 22/12/22/20.6 | 15/2/**9**/10.3 (+25) |
+| **TOTAL (182 addr)** | 14/7/30/33.5 | 50/29/39/26.4 | 30/14/**15**/12.6 (+62) |
+
+(m = matched, le30 = matched<=30% err, cw = confident_wrong, miss% =
+missed-no-polygon %; +review = rows routed to DUAL_REVIEW, surfaced not
+lost. One page -- 20-29653 doc 4941401 -- tripped the both-engines->50%-fail
+page demote, correctly: dual posts 0 confident-wrong on that permit.)
+
+Dual DOMINATES v4 on every aggregate column, posts the lowest missed% and
+roughly HALF either single engine's confident-wrong -- but **FAILS the
+"dominate or tie both on matched<=30%" bar vs model (14 vs 29)**, and
+confident-wrong is 15, not the bar's 0 (no engine has ever hit 0 on this
+grader; the disagree->review guard only fires when both engines cleanly
+anchor the same room). Root cause of both shortfalls, measured: the
+amendment's 40 SF floor. These multifamily permits' truth keys are full of
+real 16-39sf rooms (23 winner rooms demoted on 26-05332's page alone, most
+of which model had matched within 30%).
+
+**5. Canaries (bank p3 / hotel p9, `scripts/probe30_canary_dual.py`,
+results in `data/probe30/canary/canary_dual_results.json`) -- PASS.** No
+crash, sane bounds, v4 wins both pages (bank 12-vs-1 quality-passing
+anchors, hotel 15-vs-?), ZERO v4 polygons lost: dual only flags review on
+top (bank: 1 poly, the 36sf room-108 poly under the size floor; hotel: 4
+polys -- 3 size-floor + 1 all-dims-contradicted + 2 engines-disagree
+demotions land on those). No regression vs the probe29 v4 canary numbers.
+
+### Decision: default NOT flipped -- stays v4; dual ships opt-in
+
+Two of the four battery bars fail as literally specced (3 above, 4 vs
+model), and both failures trace to a single parameter: the amendment's
+40 SF plausibility floor demoting genuinely-sub-40sf truth rooms. Per the
+mission's own rule ("default changed to dual yes/no per the acceptance
+outcome"), `DEFAULT_RULES_ENGINE` stays `"v4"`; `--engine dual` (and
+`--engine model`) are fully wired, provenance-tracked, and acceptance-
+documented. Recommended follow-up before a second promotion attempt:
+re-derive the size floor from the truth_area room-size distribution
+(MIN_SQFT=15 is the pipeline-wide floor; ~40% of demoted-but-correct rooms
+sit in 15-40sf) and re-run ONLY battery items 3-4 -- everything else
+already passes.
+
+### Scoreboard (this session's rows)
+
+```
+permit            path    engine  auto  rev  open  total_sf  matched  green_prec
+14-11290-NEWC     layer   (dual)    13    0     2    1178.4  no-truth       --
+26-10321-RNVN     layer   (dual)    16   45     2    2393.9  no-truth       --
+24-06748-RNVS     rules   v4         5    6     0     480.0     5/36      0.20
+24-06748-RNVS     rules   model      0    6     1       0.0     0/36        --
+24-06748-RNVS     rules   dual       3    9     0     435.5     3/36      0.333
+```

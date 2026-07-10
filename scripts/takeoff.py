@@ -52,7 +52,7 @@ from shapely.ops import polygonize, unary_union  # noqa: E402
 
 from probe2_sf import (  # noqa: E402
     ROOT, r2_client, download_pdf, seg_len, extract_drawings, snap_and_close,
-    polygonize_rooms, find_scale, SCALE_RE,
+    polygonize_rooms, find_scale, SCALE_RE, extract_dim_words, parse_ft_in,
 )
 from probe2b_sf import two_tier_wall_candidates, find_parallel_pairs, admit_minor  # noqa: E402
 from probe7_layer_walls import extract_wall_layer_segments  # noqa: E402
@@ -61,22 +61,321 @@ from exp_p0 import note_regions  # noqa: E402
 from geometry_v2 import run_geometry_engine_v2  # noqa: E402
 from geometry_v3 import run_geometry_engine_v3  # noqa: E402
 from geometry_v4 import run_geometry_engine_v4  # noqa: E402
+from geometry_model import (  # noqa: E402
+    run_geometry_engine_model, load_wall_model_v2, DEFAULT_THRESHOLD as MODEL_ENGINE_THRESHOLD,
+)
 
-# rules-path ENGINE LADDER (probe29 Task B): "v1" is this file's own original
-# two-tier + admit_minor + snap_and_close(feet_per_pt=None) composition,
-# unchanged, still the default until acceptance passes. v2/v3/v4 delegate to
-# the geometry_vN modules' own self-contained engines (each imports/extends
-# the previous one; none of them re-derive wall candidates independently --
-# see scripts/geometry_v2.py / geometry_v3.py / geometry_v4.py). The LAYER
-# path never consults this flag -- it is a rules-path-only choice.
-RULES_ENGINES = ("v1", "v2", "v3", "v4")
+# rules-path ENGINE LADDER (probe29 Task B, then probe30/CONDITIONAL PROMOTE
+# Task): "v1" is this file's own original two-tier + admit_minor +
+# snap_and_close(feet_per_pt=None) composition, unchanged. v2/v3/v4 delegate
+# to the geometry_vN modules' own self-contained engines (each imports/
+# extends the previous one; none of them re-derive wall candidates
+# independently -- see scripts/geometry_v2.py / geometry_v3.py /
+# geometry_v4.py). "model" delegates to geometry_model.run_geometry_engine_model
+# (wall_model_v2, the trained segment classifier, feeding the SAME v2 gap-
+# closer/cavity-filter + v4 anchor-cluster proximity reconnection downstream
+# -- only wall-candidate SELECTION differs from v4). "dual" (new, probe30
+# CONDITIONAL PROMOTE decision) runs v4 AND model on the same page and
+# reconciles them per page via `reconcile_dual_engines()` below -- see that
+# function's docstring and experiments/probe30_wall_model_v2.md for why this
+# ships as an additional candidate, never a silent replacement. The LAYER
+# path never consults this flag -- it is a rules-path-only choice, and
+# "model"/"dual" never load the model or touch a layer-routed page.
+RULES_ENGINES = ("v1", "v2", "v3", "v4", "model", "dual")
 # Flipped v1 -> v4 (probe29 Task B): the 3 acceptance tests in
 # experiments/takeoff_harness.md show zero regression on the two layer-path
 # permits (identical output, engine choice never reaches the layer path) and
 # a material improvement on the rules-path permit (24-06748: 0/36 -> 5/36
 # truth rooms matched, 0 -> 480 SF, 0% -> 14% coverage). See the harness doc
 # for the full before/after and how to roll back (--engine v1 still works).
+#
+# "dual" is SHIPPED BUT NOT DEFAULT (probe30 CONDITIONAL PROMOTE task +
+# quality-gate amendment): the acceptance battery in
+# experiments/takeoff_harness.md ("Probe 30 follow-up" section) shows dual
+# never loses winner-engine geometry and cuts confident-wrong roughly in
+# half vs either single engine, BUT it fails two of the promotion bars as
+# literally specced (24-06748 auto-matched 3/36 vs v4's 5/36; TRUTH_AREA
+# matched<=30%err 14 vs model's 29) -- in both cases the shortfall is the
+# amendment's own 40 SF plausibility floor demoting sub-40sf TRUTH rooms
+# (16-39sf closets/bathrooms are real and common in these permits) to
+# geometry_review. Until that floor is re-tuned against the truth room-size
+# distribution, v4 stays the default and dual is opt-in via --engine dual.
 DEFAULT_RULES_ENGINE = "v4"
+
+_WALL_MODEL_CACHE = None
+
+
+def get_wall_model():
+    """Lazy singleton -- only loaded the first time engine="model"/"dual"
+    actually reaches the rules path (never for layer-routed permits, never
+    for v1-v4)."""
+    global _WALL_MODEL_CACHE
+    if _WALL_MODEL_CACHE is None:
+        _WALL_MODEL_CACHE = load_wall_model_v2()
+    return _WALL_MODEL_CACHE
+
+
+def match_anchors_to_polys(rooms, anchor_dict):
+    """anchor_dict: {token: (x, y)} OR {token: [(x, y), ...]} (the probe26
+    grader's find_room_anchors returns multiple placements per token; the
+    first placement that lands in a polygon wins). Returns {token: poly_idx}
+    for tokens whose anchor point lands inside one of `rooms`. Used by
+    reconcile_dual_engines to measure "how many rooms did this engine
+    anchor" per page -- the mission's own promotion criterion."""
+    out = {}
+    for token, pts in anchor_dict.items():
+        if pts and isinstance(pts[0], (int, float)):
+            pts = [pts]
+        for (x, y) in pts:
+            pt = Point(x, y)
+            hit = next((i for i, poly in enumerate(rooms) if poly.contains(pt)), None)
+            if hit is not None:
+                out[token] = hit
+                break
+    return out
+
+
+DUAL_DISAGREE_FRAC = 0.15  # mission spec: >15% area disagreement on a room
+                            # both engines independently anchor -> demote to
+                            # geometry_review; neither engine is trusted
+                            # blind on a disagreement
+
+# --- dual-arbitration QUALITY GATES (coordinator amendment, external review):
+# "prefer the engine that anchors more rooms" is gameable by an over-detecting
+# engine producing confident garbage, so an anchored room only COUNTS toward
+# the winner-election score if its polygon passes all of these; failing rooms
+# are demoted to geometry_review (never auto), and if BOTH engines fail >50%
+# of their anchored rooms the whole page demotes to review.
+QUALITY_MIN_SF, QUALITY_MAX_SF = 40, 5000   # plausible-room size band
+QUALITY_MAX_ASPECT = 12.0                    # bbox aspect ratio ceiling
+QUALITY_DIM_CONTRADICT_FRAC = 0.30           # printed-dimension contradiction bar
+QUALITY_REGION_PAD_FRAC = 0.15               # principal-region bbox padding
+PAGE_DEMOTE_FAIL_FRAC = 0.50                 # both engines worse than this -> page review
+
+
+def principal_region_from_labels(anchor_dict):
+    """Approximate the page's principal drawing region as the (padded) bbox
+    of the room-label text cluster (the amendment's own definition: room
+    labels live inside the plan viewport, not in margins/title block/
+    legends). Needs >=3 labels to be a meaningful cluster; returns None
+    (check skipped) below that."""
+    pts = []
+    for v in anchor_dict.values():
+        if v and isinstance(v[0], (int, float)):
+            pts.append(v)
+        else:
+            pts.extend(v)
+    if len(pts) < 3:
+        return None
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
+    padx = max((maxx - minx) * QUALITY_REGION_PAD_FRAC, 36.0)
+    pady = max((maxy - miny) * QUALITY_REGION_PAD_FRAC, 36.0)
+    return (minx - padx, miny - pady, maxx + padx, maxy + pady)
+
+
+def poly_quality_failures(poly, feet_per_pt, region, dim_words):
+    """Returns a list of human-readable quality-gate failure strings for one
+    anchored polygon (empty list = passes all gates). Gates per the
+    coordinator amendment: size band, principal drawing region, aspect
+    ratio, printed-dimension contradiction.
+
+    Dimension check: a printed dimension string is "matched" to this room
+    iff its text bbox center falls INSIDE the polygon (dimension callouts
+    for a room are drawn in/on it); the room fails only if at least one
+    dimension is matched and NONE of the matched dimensions agrees with
+    either bbox side within QUALITY_DIM_CONTRADICT_FRAC -- one agreeing
+    dimension is enough to pass (adjacent-feature dims routinely land
+    inside a room's polygon too)."""
+    fails = []
+    sf = poly.area * feet_per_pt ** 2 if feet_per_pt else None
+    if sf is not None and not (QUALITY_MIN_SF <= sf <= QUALITY_MAX_SF):
+        fails.append(f"size {sf:.0f}sf outside plausible band [{QUALITY_MIN_SF},{QUALITY_MAX_SF}]")
+    minx, miny, maxx, maxy = poly.bounds
+    w, h = maxx - minx, maxy - miny
+    if min(w, h) > 0 and max(w, h) / min(w, h) >= QUALITY_MAX_ASPECT:
+        fails.append(f"aspect ratio {max(w, h) / min(w, h):.1f}:1 >= {QUALITY_MAX_ASPECT:.0f}:1")
+    if region is not None:
+        c = poly.centroid
+        rx0, ry0, rx1, ry1 = region
+        if not (rx0 <= c.x <= rx1 and ry0 <= c.y <= ry1):
+            fails.append("centroid outside principal drawing region (room-label bbox cluster)")
+    if dim_words and feet_per_pt:
+        w_ft, h_ft = w * feet_per_pt, h * feet_per_pt
+        matched, agreed = 0, 0
+        for d in dim_words:
+            bx0, by0, bx1, by1 = d["bbox"]
+            if not poly.contains(Point((bx0 + bx1) / 2, (by0 + by1) / 2)):
+                continue
+            val = parse_ft_in(d["text"])
+            if not val or val < 2:
+                continue
+            matched += 1
+            if (abs(val - w_ft) / val <= QUALITY_DIM_CONTRADICT_FRAC or
+                    abs(val - h_ft) / val <= QUALITY_DIM_CONTRADICT_FRAC):
+                agreed += 1
+        if matched and not agreed:
+            fails.append(f"contradicts all {matched} printed dimension(s) inside it by >"
+                          f"{QUALITY_DIM_CONTRADICT_FRAC:.0%}")
+    return fails
+
+
+def quality_gate_anchor_map(rooms, anchor_map, feet_per_pt, region, dim_words):
+    """Splits an engine's {token: poly_idx} anchor map into quality-PASSING
+    tokens (count toward the winner-election score) and FAILING tokens
+    (token -> (poly_idx, reasons); the polygon is demoted to geometry_review
+    downstream). A polygon is checked once and its verdict shared by every
+    token it anchors."""
+    verdicts = {}
+    for token, idx in anchor_map.items():
+        if idx not in verdicts:
+            verdicts[idx] = poly_quality_failures(rooms[idx], feet_per_pt, region, dim_words)
+    passing = {t: i for t, i in anchor_map.items() if not verdicts[i]}
+    failing = {t: (i, verdicts[i]) for t, i in anchor_map.items() if verdicts[i]}
+    return passing, failing
+
+
+def reconcile_dual_engines(name_a, rooms_a, name_b, rooms_b, anchor_dict, feet_per_pt,
+                            dim_words=None, disagree_frac=DUAL_DISAGREE_FRAC):
+    """Per-PAGE reconciliation of two independently-run geometry engines
+    (probe30 CONDITIONAL PROMOTE decision, experiments/probe30_wall_model_v2.md
+    "Promote/park reasoning", plus the external-review quality-gate
+    amendment): prefer whichever engine anchors more rooms, BUT an anchored
+    room only counts toward that score if its polygon passes the quality
+    gates above (size band / principal region / aspect ratio / printed-
+    dimension agreement) -- an over-detecting engine producing confident
+    garbage can't win on raw anchor count. Then:
+      - the winner's quality-FAILING anchored rooms -> geometry_review
+        (noted with the failed gate(s));
+      - a room the LOSING engine anchored that the winner missed ENTIRELY
+        is added back as a geometry_review candidate (rescued polygons are
+        DEDUPED by loser poly index -- one merged blob anchoring several
+        loser-only tokens is appended once, its note lists all its tokens);
+      - a room BOTH engines anchor -- each via a UNIQUELY-anchored polygon;
+        a multi-token merged blob is not a per-room measurement and is
+        judged by the open-zone/merge machinery instead, never used to veto
+        the other engine's clean single room -- whose areas disagree by
+        more than `disagree_frac` is demoted to geometry_review with an
+        "engines disagree" note;
+      - if BOTH engines fail quality on >PAGE_DEMOTE_FAIL_FRAC of their
+        anchored rooms, the whole page demotes: every polygon gets a
+        review note.
+
+    Ties (equal quality-passing anchor counts) favor `name_a` -- callers
+    pass the more mature/trusted engine (v4) as `name_a`.
+
+    Returns (final_polys, poly_engine, poly_notes, diag):
+      final_polys -- winner's full room-polygon list, PLUS loser-only
+                     rescued polygons appended at the end (winner's original
+                     indices unchanged, so poly_idx-keyed data lines up).
+      poly_engine -- parallel list, one of name_a / name_b / "both" per index.
+      poly_notes  -- parallel list of str lists; NON-EMPTY means "force
+                     geometry_review, never auto_quantity".
+      diag        -- counts for run.json / scoreboard provenance.
+    """
+    dim_words = dim_words or []
+    region = principal_region_from_labels(anchor_dict)
+    map_a = match_anchors_to_polys(rooms_a, anchor_dict)
+    map_b = match_anchors_to_polys(rooms_b, anchor_dict)
+    qual_a, fail_a = quality_gate_anchor_map(rooms_a, map_a, feet_per_pt, region, dim_words)
+    qual_b, fail_b = quality_gate_anchor_map(rooms_b, map_b, feet_per_pt, region, dim_words)
+
+    if len(qual_a) >= len(qual_b):
+        winner, loser = name_a, name_b
+        winner_rooms, loser_rooms = rooms_a, rooms_b
+        winner_map, loser_map = map_a, map_b
+        winner_qual, winner_fail, loser_qual = qual_a, fail_a, qual_b
+    else:
+        winner, loser = name_b, name_a
+        winner_rooms, loser_rooms = rooms_b, rooms_a
+        winner_map, loser_map = map_b, map_a
+        winner_qual, winner_fail, loser_qual = qual_b, fail_b, qual_a
+
+    final_polys = list(winner_rooms)
+    poly_engine = [winner] * len(final_polys)
+    poly_notes = [[] for _ in final_polys]
+
+    # amendment: the winner's quality-failing anchored rooms don't ride
+    # through as auto -- demote with the reason(s)
+    n_quality_demoted = 0
+    for token, (w_idx, reasons) in sorted(winner_fail.items()):
+        note = (f"room {token!r} failed dual quality gate(s): {'; '.join(reasons)}"
+                " -- geometry_review")
+        if note not in poly_notes[w_idx]:
+            poly_notes[w_idx].append(note)
+            n_quality_demoted += 1
+
+    # rescue loser-only rooms, deduped by loser polygon (a merged blob that
+    # anchors several loser-only tokens is appended ONCE)
+    rescue_by_poly = defaultdict(list)
+    for token, l_idx in loser_map.items():
+        if token not in winner_map:
+            rescue_by_poly[l_idx].append(token)
+    n_rescued = 0
+    for l_idx in sorted(rescue_by_poly):
+        tokens = sorted(rescue_by_poly[l_idx])
+        final_polys.append(loser_rooms[l_idx])
+        poly_engine.append(loser)
+        poly_notes.append([f"anchored only by {loser} engine ({winner} missed room(s) "
+                            f"{','.join(tokens)} entirely) -- geometry_review, never auto"])
+        n_rescued += 1
+
+    # "engines disagree" demotion: only between polygons that are each
+    # UNIQUELY anchored by the token in their own engine (see docstring),
+    # and only where both sides passed quality (a quality-failed room is
+    # already demoted with a more specific reason)
+    w_tokens_per_poly = defaultdict(int)
+    for _t, i in winner_map.items():
+        w_tokens_per_poly[i] += 1
+    l_tokens_per_poly = defaultdict(int)
+    for _t, i in loser_map.items():
+        l_tokens_per_poly[i] += 1
+
+    common = sorted(set(winner_map) & set(loser_map))
+    n_disagree = 0
+    for token in common:
+        w_idx, l_idx = winner_map[token], loser_map[token]
+        poly_engine[w_idx] = "both"
+        if token not in winner_qual or token not in loser_qual:
+            continue
+        if w_tokens_per_poly[w_idx] != 1 or l_tokens_per_poly[l_idx] != 1:
+            continue  # merged blob on either side: not a per-room measurement
+        w_sf = winner_rooms[w_idx].area * feet_per_pt ** 2 if feet_per_pt else winner_rooms[w_idx].area
+        l_sf = loser_rooms[l_idx].area * feet_per_pt ** 2 if feet_per_pt else loser_rooms[l_idx].area
+        denom = max(w_sf, l_sf)
+        pct = abs(w_sf - l_sf) / denom if denom else 0.0
+        if pct > disagree_frac:
+            poly_notes[w_idx].append(
+                f"engines disagree on room {token!r}: {winner}={w_sf:.0f}sf vs "
+                f"{loser}={l_sf:.0f}sf ({pct:.0%} apart) -- geometry_review")
+            n_disagree += 1
+
+    # amendment: both engines mostly producing quality-failing anchored
+    # rooms -> don't trust the page at all, demote everything to review
+    frac_fail_a = len(fail_a) / len(map_a) if map_a else 0.0
+    frac_fail_b = len(fail_b) / len(map_b) if map_b else 0.0
+    page_demoted = bool(map_a) and bool(map_b) and \
+        frac_fail_a > PAGE_DEMOTE_FAIL_FRAC and frac_fail_b > PAGE_DEMOTE_FAIL_FRAC
+    if page_demoted:
+        note = (f"page demoted to review: both engines failed dual quality gates on >"
+                f"{PAGE_DEMOTE_FAIL_FRAC:.0%} of their anchored rooms "
+                f"({name_a} {frac_fail_a:.0%}, {name_b} {frac_fail_b:.0%})")
+        for notes in poly_notes:
+            if note not in notes:
+                notes.append(note)
+
+    diag = dict(winner=winner, loser=loser,
+                n_anchored_a=len(map_a), n_anchored_b=len(map_b),
+                n_quality_pass_a=len(qual_a), n_quality_pass_b=len(qual_b),
+                quality_failures_a={t: v[1] for t, v in sorted(fail_a.items())},
+                quality_failures_b={t: v[1] for t, v in sorted(fail_b.items())},
+                n_winner_quality_demoted=n_quality_demoted,
+                n_common_anchored=len(common), n_rescued_from_loser=n_rescued,
+                n_disagree_demoted=n_disagree,
+                page_demoted=page_demoted,
+                principal_region=[round(v, 1) for v in region] if region else None)
+    return final_polys, poly_engine, poly_notes, diag
 
 # exp_p0/page_select's ROOM_NUM (`^\d{2,4}[A-Za-z]?$`) is too permissive on
 # dense architectural sheets: 1-2 digit tokens are almost always door/
@@ -107,8 +406,11 @@ MATERIALS_DIR = os.path.join(ROOT, "data", "triage", "materials")
 for d in (OUT_ROOT, CACHE_SCALE, CACHE_ANCHOR):
     os.makedirs(d, exist_ok=True)
 
+# green_precision (coordinator amendment): of rooms a run marked
+# auto_quantity, what fraction match truth within 15% -- computable only on
+# graded permits (grade rows), blank otherwise.
 SB_FIELDS = ["permit", "ts", "path", "n_auto", "n_review", "n_open", "n_artifact",
-             "total_sf", "graded_median_err", "graded_coverage", "flags"]
+             "total_sf", "graded_median_err", "graded_coverage", "green_precision", "flags"]
 
 MIN_SQFT, MAX_SQFT = 15, 8000
 ROOM_BAND_MIN_FRAC, ROOM_BAND_MAX_FRAC = 0.002, 0.08  # scan_closeability's band
@@ -347,9 +649,21 @@ def rules_path_geometry(pdf, page_index, pw, ph, fpp, engine=DEFAULT_RULES_ENGIN
     one step earlier; `page` (the already-open fitz page) must be passed in
     for this. `truth`, if given, whitelists the anchor search to the
     schedule's own room-number list (cuts door/keynote false-positive
-    anchors), same as step 4 already does."""
-    ex = extract_drawings(pdf, page_index)
+    anchors), same as step 4 already does.
+
+    `engine="model"` and `engine="dual"` need the actual PDF path + page
+    index too (`geometry_model.run_geometry_engine_model` does its own
+    segment extraction/feature computation, a different code path from
+    `extract_drawings` -- probe30's wall_model_v2, see geometry_model.py and
+    experiments/probe30_wall_model_v2.md). `dual` runs v4 AND model on the
+    SAME page and reconciles them via `reconcile_dual_engines()` -- see that
+    function's docstring for the per-page reconciliation rule. Every branch
+    returns a `poly_engine` / `poly_notes` list (parallel to the returned
+    polygons) in `diag`, consumed downstream by `build_rooms()` to record
+    provenance and to force-demote reconciliation-flagged polygons to
+    geometry_review regardless of anchor count."""
     if engine == "v1":
+        ex = extract_drawings(pdf, page_index)
         tiers = two_tier_wall_candidates(ex, fpp)
         combined = tiers["major"] + tiers["minor"]
         pairs = find_parallel_pairs(combined, fpp)
@@ -370,8 +684,52 @@ def rules_path_geometry(pdf, page_index, pw, ph, fpp, engine=DEFAULT_RULES_ENGIN
         polys, n_faces = polygonize_rooms(lines, pw, ph, MIN_SQFT, MAX_SQFT, fpp)
         return polys, dict(path="rules", engine="v1", n_major=len(tiers["major"]), n_minor=len(tiers["minor"]),
                             n_parallel_pairs=len(pairs), n_minor_admitted=n_added,
-                            n_polygon_faces_total=n_faces, gap_closing=gap_info)
+                            n_polygon_faces_total=n_faces, gap_closing=gap_info,
+                            poly_engine=["v1"] * len(polys), poly_notes=[[] for _ in polys])
 
+    if engine == "model":
+        whitelist = set(truth["by_room"].keys()) if truth else None
+        anchor_dict = real_text_anchors(page, whitelist) if page is not None else {}
+        anchor_points = list(anchor_dict.values())
+        clf = get_wall_model()
+        out, diag = run_geometry_engine_model(pdf, page_index, clf, fpp, anchor_points,
+                                               min_sqft=MIN_SQFT, max_sqft=MAX_SQFT,
+                                               threshold=MODEL_ENGINE_THRESHOLD)
+        diag["path"] = "rules"
+        diag["engine"] = "model"
+        if out is None:
+            diag["poly_engine"], diag["poly_notes"] = [], []
+            return [], diag
+        rooms_all = out["rooms_all"]
+        diag["poly_engine"] = ["model"] * len(rooms_all)
+        diag["poly_notes"] = [[] for _ in rooms_all]
+        return rooms_all, diag
+
+    if engine == "dual":
+        ex = extract_drawings(pdf, page_index)
+        whitelist = set(truth["by_room"].keys()) if truth else None
+        anchor_dict = real_text_anchors(page, whitelist) if page is not None else {}
+        anchor_points = list(anchor_dict.values())
+        out4, diag4 = run_geometry_engine_v4(ex, fpp, anchor_points, MIN_SQFT, MAX_SQFT)
+        clf = get_wall_model()
+        outm, diagm = run_geometry_engine_model(pdf, page_index, clf, fpp, anchor_points,
+                                                 min_sqft=MIN_SQFT, max_sqft=MAX_SQFT,
+                                                 threshold=MODEL_ENGINE_THRESHOLD)
+        rooms4 = out4["rooms_all"] if out4 else []
+        roomsm = outm["rooms_all"] if outm else []
+        dim_words = extract_dim_words(pdf, page_index)
+        final_polys, poly_engine, poly_notes, recon_diag = reconcile_dual_engines(
+            "v4", rooms4, "model", roomsm, anchor_dict, fpp, dim_words=dim_words)
+        drop = ("anchor_cluster_false_positive_suspects", "cavity_hatch_killed_detail")
+        diag = dict(path="rules", engine="dual",
+                     v4_diag={k: v for k, v in diag4.items() if k not in drop},
+                     model_diag={k: v for k, v in diagm.items() if k not in drop},
+                     reconcile=recon_diag,
+                     n_polys_v4=len(rooms4), n_polys_model=len(roomsm), n_polys_final=len(final_polys),
+                     poly_engine=poly_engine, poly_notes=poly_notes)
+        return final_polys, diag
+
+    ex = extract_drawings(pdf, page_index)
     if engine == "v2":
         out, diag = run_geometry_engine_v2(ex, fpp, MIN_SQFT, MAX_SQFT)
     elif engine in ("v3", "v4"):
@@ -388,8 +746,12 @@ def rules_path_geometry(pdf, page_index, pw, ph, fpp, engine=DEFAULT_RULES_ENGIN
     diag["path"] = "rules"
     diag["engine"] = engine
     if out is None:
+        diag["poly_engine"], diag["poly_notes"] = [], []
         return [], diag
-    return out["rooms_all"], diag
+    rooms_all = out["rooms_all"]
+    diag["poly_engine"] = [engine] * len(rooms_all)
+    diag["poly_notes"] = [[] for _ in rooms_all]
+    return rooms_all, diag
 
 
 def routing_gate_real_scale(pdf, page_index, pw, fpp):
@@ -604,7 +966,17 @@ def anchor_display_name(doc_id, page_index, room):
     return ANCHOR_NAMES_CACHE[key].get(room)
 
 
-def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index):
+def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index,
+                 poly_engine=None, poly_notes=None):
+    """`poly_engine`/`poly_notes` (parallel to `polys`, only set by the
+    rules-path dual/model/vN engines -- see rules_path_geometry) carry per-
+    polygon provenance; a non-empty `poly_notes[i]` (dual reconciliation's
+    "loser-only rescue" or "engines disagree" flags) forces that polygon to
+    geometry_review regardless of how many room labels it anchors -- never
+    auto_quantity on an engine-disagreement or a rescue-only find. Leaving
+    both args None (the layer path's call, and any pre-dual rules call)
+    reproduces the exact prior room-dict shape byte-for-byte (no "engine"
+    key added at all)."""
     rooms = []
     open_groups = []
     n_artifact = len(poly_artifact)
@@ -613,29 +985,38 @@ def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index
             continue
         rn_list = poly_rooms.get(i, [])
         sqft = round(poly.area * fpp ** 2, 1) if fpp else None
-        if len(rn_list) == 1:
+        notes = poly_notes[i] if poly_notes else []
+        forced_review = bool(notes)
+        if len(rn_list) == 1 and not forced_review:
             rn = rn_list[0]
-            rooms.append(dict(
+            room = dict(
                 poly_index=i, room=rn, name=anchor_display_name(doc_id, page_index, rn),
                 area_sf=sqft, product_action="auto_quantity",
                 material=material_for_room(truth, rn),
                 confidence="high" if sqft else "low",
                 flags=[],
-            ))
-        elif len(rn_list) > 1:
+            )
+        elif len(rn_list) > 1 and not forced_review:
             gid = f"open_{i}"
             open_groups.append(dict(group_id=gid, members=rn_list, area_sf=sqft, poly_index=i))
-            rooms.append(dict(
+            room = dict(
                 poly_index=i, room=None, name=None, area_sf=sqft,
                 product_action="open_zone_split", material="mixed/TBD",
                 confidence="medium", flags=[f"open_group={gid}", f"members={','.join(rn_list)}"],
-            ))
+            )
         else:
-            rooms.append(dict(
-                poly_index=i, room=None, name=None, area_sf=sqft,
-                product_action="geometry_review", material=None,
-                confidence="very_low", flags=["unlabeled_polygon"],
-            ))
+            rn = rn_list[0] if rn_list else None
+            room = dict(
+                poly_index=i, room=rn,
+                name=anchor_display_name(doc_id, page_index, rn) if rn else None,
+                area_sf=sqft, product_action="geometry_review",
+                material=material_for_room(truth, rn) if rn else None,
+                confidence="very_low",
+                flags=list(notes) if notes else ["unlabeled_polygon"],
+            )
+        if poly_engine is not None:
+            room["engine"] = poly_engine[i]
+        rooms.append(room)
     return rooms, open_groups, n_artifact
 
 
@@ -689,12 +1070,25 @@ def write_markdown(md_path, permit, doc_id, page_index, sheet_title, meta, scale
         if flags:
             f.write(f"- flags: {', '.join(flags)}\n")
         f.write(f"- material: {material_note}\n\n")
-        f.write("| room | name | area_sf | product_action | material | confidence |\n")
-        f.write("|---|---|---:|---|---|---|\n")
+        # "engine" column only appears when the run actually carries per-room
+        # provenance (rules path with v1-v4/model/dual) -- a layer-path run's
+        # markdown keeps its exact prior shape (no column added) for the
+        # byte-identical acceptance check.
+        show_engine = any(r.get("engine") for r in rooms)
+        header = "| room | name | area_sf | product_action | material | confidence |"
+        sep = "|---|---|---:|---|---|---|"
+        if show_engine:
+            header += " engine |"
+            sep += "---|"
+        f.write(header + "\n")
+        f.write(sep + "\n")
         for r in sorted(rooms, key=lambda x: (x["product_action"] != "auto_quantity", -(x["area_sf"] or 0))):
-            f.write(f"| {r['room'] or ''} | {r['name'] or ''} | "
+            line = (f"| {r['room'] or ''} | {r['name'] or ''} | "
                     f"{r['area_sf'] if r['area_sf'] is not None else ''} | {r['product_action']} | "
-                    f"{r['material'] or ''} | {r['confidence']} |\n")
+                    f"{r['material'] or ''} | {r['confidence']} |")
+            if show_engine:
+                line += f" {r.get('engine') or ''} |"
+            f.write(line + "\n")
         if open_groups:
             f.write("\n## open-zone groups\n\n")
             for g in open_groups:
@@ -702,10 +1096,30 @@ def write_markdown(md_path, permit, doc_id, page_index, sheet_title, meta, scale
 
 
 def append_scoreboard(row):
-    write_header = not os.path.exists(SCOREBOARD) or os.path.getsize(SCOREBOARD) == 0
+    """Append-only in CONTENT; the header/schema migrates in place when
+    SB_FIELDS gains a column (green_precision, coordinator amendment):
+    existing rows are preserved verbatim, new columns backfill as blank.
+    Without this, DictWriter would append rows misaligned with the old
+    on-disk header."""
+    row = dict(row)
+    row.setdefault("green_precision", "")
+    exists = os.path.exists(SCOREBOARD) and os.path.getsize(SCOREBOARD) > 0
+    if exists:
+        with open(SCOREBOARD, newline="") as f:
+            rdr = csv.reader(f)
+            header = next(rdr, None)
+        if header != SB_FIELDS:
+            with open(SCOREBOARD, newline="") as f:
+                old_rows = list(csv.DictReader(f))
+            with open(SCOREBOARD, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=SB_FIELDS, restval="")
+                w.writeheader()
+                for r in old_rows:
+                    r.pop(None, None)
+                    w.writerow({k: r.get(k, "") for k in SB_FIELDS})
     with open(SCOREBOARD, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=SB_FIELDS)
-        if write_header:
+        w = csv.DictWriter(f, fieldnames=SB_FIELDS, restval="")
+        if not exists:
             w.writeheader()
         w.writerow(row)
 
@@ -762,7 +1176,8 @@ def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE
                 page, polys, pdf, page_index, doc_id, run_dir, truth)
             flags.extend(anchor_flags)
             rooms, open_groups, n_artifact = build_rooms(
-                polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index)
+                polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index,
+                poly_engine=meta.get("poly_engine"), poly_notes=meta.get("poly_notes"))
 
             if truth is None and finish_pages:
                 flags.append(f"material_todo: finish plan labeled at doc {finish_pages[0]['od']} "
@@ -793,13 +1208,32 @@ def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE
     n_artifact = sum(pr.get("n_artifact", 0) for pr in page_results)
     total_sf = sum(r["area_sf"] for r in all_rooms
                    if r["product_action"] == "auto_quantity" and r["area_sf"])
-    all_flags = sorted({f for pr in page_results for f in pr["flags"]} | {f"rules_engine={engine}"})
+    # dual/model engine provenance (probe30 CONDITIONAL PROMOTE task): only
+    # ever populated on the rules path when engine in (v1..v4, model, dual)
+    # -- layer-path rooms never carry an "engine" key (build_rooms leaves the
+    # dict shape untouched when poly_engine is None), so this is empty and
+    # adds no flag for layer-routed permits.
+    engine_counts = defaultdict(int)
+    for r in all_rooms:
+        if r.get("engine"):
+            engine_counts[r["engine"]] += 1
+    engine_flags = {"engine_provenance=" + ",".join(f"{k}:{v}" for k, v in sorted(engine_counts.items()))} \
+        if engine_counts else set()
+    all_flags = sorted({f for pr in page_results for f in pr["flags"]} |
+                        {f"rules_engine={engine}"} | engine_flags)
+
+    summary = dict(n_auto=n_auto, n_review=n_review, n_open=n_open, n_artifact=n_artifact,
+                   total_sf=round(total_sf, 1), flags=all_flags)
+    if engine_counts:
+        # only added when the rules path actually recorded provenance (v1-v4/
+        # model/dual) -- a layer-path run's summary dict keeps its exact prior
+        # shape, no new key, for the byte-identical acceptance check.
+        summary["engine_provenance"] = dict(engine_counts)
 
     run_json = dict(
         permit=permit, generated_at=datetime.now(timezone.utc).isoformat(),
         pages=page_results, rules_engine=engine,
-        summary=dict(n_auto=n_auto, n_review=n_review, n_open=n_open, n_artifact=n_artifact,
-                     total_sf=round(total_sf, 1), flags=all_flags),
+        summary=summary,
         truth_source=truth["path"] if truth else None,
     )
     with open(os.path.join(run_dir, "run.json"), "w") as f:
@@ -900,12 +1334,28 @@ def grade_permit(permit):
     coverage = n_matched / len(rows) if rows else 0.0
     median_err = sorted(errs)[len(errs) // 2] if errs else None
 
+    # green_precision (coordinator amendment): of ALL rooms the run marked
+    # auto_quantity (with a room number + area -- i.e. everything the product
+    # would show green), the fraction whose area matches truth within 15%.
+    # An auto room whose number isn't in the truth key at all counts against
+    # (it is a confident claim we cannot verify as right).
+    n_green_denom = len(run_rooms)
+    n_green = 0
+    for room, g_sf in run_rooms.items():
+        t = truth_rooms.get(room)
+        if t and t["area_sf"] and abs(g_sf - t["area_sf"]) / t["area_sf"] <= 0.15:
+            n_green += 1
+    green_precision = round(n_green / n_green_denom, 3) if n_green_denom else None
+
     print(f"{'room':<8}{'truth_sf':>9}{'geom_sf':>9}{'err%':>8}")
     for room, t_sf, g_sf, err in rows:
         print(f"{room:<8}{t_sf:>9}{(f'{g_sf:.0f}' if g_sf is not None else '--'):>9}"
               f"{(f'{err:+.1f}' if err is not None else '--'):>8}")
     print(f"\ncoverage: {n_matched}/{len(rows)} truth rooms matched ({coverage:.0%})")
     print(f"median |err|: {median_err:.1f}%" if median_err is not None else "median |err|: n/a (no matches)")
+    print(f"green_precision: {n_green}/{n_green_denom} auto rooms within 15% of truth "
+          f"({green_precision:.0%})" if green_precision is not None else
+          "green_precision: n/a (no auto rooms)")
     if group_verdicts:
         print("\nopen-zone groups:")
         for gv in group_verdicts:
@@ -919,7 +1369,9 @@ def grade_permit(permit):
         n_open=run_json["summary"]["n_open"], n_artifact=run_json["summary"]["n_artifact"],
         total_sf=run_json["summary"]["total_sf"],
         graded_median_err=round(median_err, 1) if median_err is not None else "",
-        graded_coverage=round(coverage, 3), flags=f"matched={n_matched}/{len(rows)}",
+        graded_coverage=round(coverage, 3),
+        green_precision=green_precision if green_precision is not None else "",
+        flags=f"matched={n_matched}/{len(rows)}",
     ))
 
 
@@ -931,12 +1383,13 @@ def scoreboard():
         return
     with open(SCOREBOARD) as f:
         rows = list(csv.DictReader(f))
-    hdr = f"{'permit':<18}{'ts':<21}{'path':<14}{'auto':>5}{'rev':>5}{'open':>5}{'art':>5}{'total_sf':>10}{'med_err%':>9}{'cov':>6}"
+    hdr = (f"{'permit':<18}{'ts':<21}{'path':<14}{'auto':>5}{'rev':>5}{'open':>5}{'art':>5}"
+           f"{'total_sf':>10}{'med_err%':>9}{'cov':>6}{'green':>7}")
     print(hdr)
     for r in rows:
         print(f"{r['permit']:<18}{r['ts']:<21}{r['path']:<14}{r['n_auto']:>5}{r['n_review']:>5}"
               f"{r['n_open']:>5}{r['n_artifact']:>5}{r['total_sf']:>10}"
-              f"{r['graded_median_err']:>9}{r['graded_coverage']:>6}")
+              f"{r['graded_median_err']:>9}{r['graded_coverage']:>6}{r.get('green_precision', ''):>7}")
 
 
 # ---------------------------------------------------------------------- main

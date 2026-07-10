@@ -498,3 +498,4 @@ for judgment.
   `probe24_two_permit_takeoff.md` (closeability gate finding),
   `ML_ARC_layers_to_product.md` (ML plan)
 - Rules/state: `CLAUDE.md`, `STATE.md`
+11

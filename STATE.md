@@ -535,3 +535,29 @@ and `python3 scripts/pipeline.py board`.
   dual-run rules-v4 + model, prefer whichever anchors more rooms, route
   disagreements to review; do NOT retire v4. Integration queued.
   Full writeup: experiments/probe30_wall_model_v2.md.
+
+## PROBE 30b — dataset audit: firm clustering + holdout leak (2026-07-10 ~14:00 UTC, Fable)
+- Nick challenged the flat-curve read ("maybe duplicates, not feature ceiling").
+  Measured it: 79 roster permits = 49 distinct firm-clusters (68 unique
+  designs). Biggest family: C. Spencer Smith / 1018 Bienville (phone
+  504.566.0585) = 14 permits incl. 5 OF THE 10 HOLDOUTS; also LKHarmon x6,
+  ChiefArch-dialect x5, metrostudio x4, Prytania-rowhouse refile x4.
+- Curve re-read in cluster units: 13->24->33->41->46 clusters across the
+  15/30/45/60/69 points — diversity DID grow while the curve stayed flat, so
+  "engineer, don't add generic data" SURVIVES the challenge.
+- BUT the holdout leaked: 7/10 holdouts have train-cluster siblings; 2 are
+  verbatim refiled designs (0.92/0.98 PR-AUC, 29% of pooled segments).
+  Honest pooled holdout PR-AUC excl. refiles = 0.214 (not 0.340). Model
+  memorizes DESIGNS, not firm dialects (same-firm-diff-building median
+  0.364 ~ no-sibling 0.229; 24-07484 scores 0.126 with 9 same-firm sibs).
+- Label spot-check (6 renders, data/probe30b/): 3/6 train pages are
+  MEP/RCP/structural sheets carrying the wall xref (gate confirmed them
+  knowingly — criterion was "closes rooms"); wall layers carry stairs/
+  platform/trim/offset-hidden-vectors (LKHarmon, ChiefArch); existing walls
+  unlabeled (metrostudio). Label hygiene = second binding constraint.
+- PRESCRIPTION (cost order): (1) rebuild holdout cluster-disjoint from
+  data/probe30b/clusters.csv + re-baseline v2 (~1h, eval-only); (2) drop
+  hidden/clipped vectors + out-of-ink-bbox wall segments at extraction;
+  (3) only then feature/architecture work; new data only if cluster-NEW.
+- Writeup: experiments/probe30b_dataset_audit.md. No labels touched, no
+  retrain, no commits.
