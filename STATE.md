@@ -463,3 +463,52 @@ and `python3 scripts/pipeline.py board`.
   after remainder + title-fix re-gate). ML training gate (>=15 multi-firm)
   remains cleared ~5x. Next: title-filter fix -> re-gate -> settle roster
   -> ML training run v2 per improvement-loop skill.
+
+## Re-gate queue drained + roster settled (2026-07-10, picked up mid-session
+## after a restart lost the prior transcript; work banked in files)
+- Reviewed the BAD_TITLE_LINE patch (commit f9dc605, scan_closeability_full.py):
+  substring matching + MEP/civil/RCP/plot-plan patterns + page-level
+  FLOOR-PLAN-whitelist veto, looks correct. Spot-checked the 4 documented
+  MISMATCH cases in scripts/_test_title_patch.py by pulling raw page text
+  directly (doc 1878269 p49, 2285638 p36, 5413829 p25, 5411538 p1): none of
+  the "ROOF FRAMING PLAN PART A" / "ELECTRICAL PLAN" / "PART HVAC PLAN" /
+  "RIGHT SIDE ELEVATION" title strings are in the extracted text at all —
+  confirms the predecessor's call that these are a text-extraction (vision)
+  limit, not a regex gap. No code fix needed.
+- Diffed the predecessor's intermediate outputs (data/triage/regate_phaseA.csv,
+  _phaseB_permits.txt, _regate_phaseB_render.csv) against the 124 original
+  FALSE_PASS permits: **the re-gate queue was already fully drained** —
+  Phase A recomputed bad_title on all 124 (10 RECOVERED/eyeballed, 44
+  UNCHANGED, 70 LOST_NO_REPLACEMENT); Phase B widened all 70 to top-20
+  candidates, scored all 519 new candidates (0 missing), found 4 new
+  gate-passing pages (all rendered + eyeballed, all still FALSE_PASS), 66
+  had no candidate even widened. Zero permits needed new ranking/scoring/
+  eyeballing this session — just report + roster + board were left undone.
+- Added one CONFIRMED row to eyeball_verdicts.csv for 14-11290-NEWC (the
+  bank calibration anchor, verified via full takeoff in probe7 but never
+  formally logged in the eyeball CSV) so the roster generator has a
+  complete source of truth; slice=calibration, append-only.
+- **FINAL SETTLED ROSTER: 80 CONFIRMED** (65 pre-existing corpus + 15 from
+  the 2026-07-09 go-wider batch; 6 of the 80 recovered by the regate, 1 is
+  the calibration-anchor addition), **117 FALSE_PASS**, **7 UNCLEAR**
+  (16-36268, 20-29280, 21-07928, 21-35659, 23-01359, 24-22263, 25-31791 —
+  need a second look before either bucket). 203 permits judged total (124
+  were FALSE_PASS pre-regate; regate flipped 6->CONFIRMED, 1->UNCLEAR).
+- Wrote data/triage/train_layered_roster.csv (permit, doc_id, page, fpp,
+  verdict_source in {eyeball, regate, verified_takeoff}) — 80 rows, the
+  probe-30 trainer's input. Extended scripts/report_usable_layered.py with
+  a "Post-eyeball settled roster" section (regenerated
+  usable_layered_report.md) as the authoritative final count, distinct from
+  the headline's live gate recompute (which undercounts CONFIRMED permits
+  whose candidate page has an unrelated stale score_err in
+  closeability_full.csv — a pre-existing scoring gap, not a regate issue,
+  left unfixed as out of scope).
+- Board (data/triage/permit_status.jsonl): marked 78 newly-confirmed
+  permits `done --tier TRAIN_LAYERED --note "eyeball-verified 2026-07-10"`
+  (skipped 3 already tiered TRAIN_LAYERED: 14-11290-NEWC, 23-05848-RNVS,
+  26-10321-RNVN; 22-03626-RNVS got a combined tier
+  "TRAIN_LAYERED + READY_NO_FINISH" since it already carried a different
+  tier). 81 permits now carry a TRAIN_LAYERED tag on the board.
+- NEXT: ML training run v2 (probe25 harness) on the 80-permit roster,
+  per improvement-loop skill gates. The 7 UNCLEAR permits are a cheap
+  follow-up eyeball if anyone wants a couple more before training.
