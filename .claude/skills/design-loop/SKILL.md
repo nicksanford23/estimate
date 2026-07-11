@@ -64,3 +64,11 @@ more rounds until he restarts it.
 4. "Fixed by you" state + correction log wiring.
 5. Nick's 5 trade questions (PRODUCT_UX_V1.md §open questions) — his
    answers re-default the review screen.
+
+## HARD RULE (added 2026-07-11 after a violation)
+Once mockups are APPROVED they ARE the spec for every build pass,
+including "thin"/"fast" ones. Thin = unpolished implementation OF the
+approved layout — never a different layout. The approved images live in
+/workspaces/estimate/design_specs/*_APPROVED.png; every UI build prompt
+must point the agent at the relevant image + SCHEMA_V2 §14 build-notes.
+No driver may waive this for speed without the founder's explicit OK.
