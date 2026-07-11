@@ -300,6 +300,36 @@ not technical disputes):**
 3. Route rename to buildingId (small build task, do during next UI
    slice): approve?
 
+## 8. FOUNDER PROCESS DECISIONS (Nick, 2026-07-11 — binding; R2 must reflect)
+
+1. **No rush to lock.** Rounds continue until right, not until Fable's
+   window ends.
+2. **PILOT RESET:** all V2 pilot-building work done so far (a prior
+   badly-orchestrated agent ran labeling with awful results) is
+   DISTRUSTED. Reset = constitution-compliant quarantine, never
+   deletion: mark that run's machine_observations defective / its
+   decisions superseded-non-binding via NEW rows, then re-run the 10
+   pilot buildings fresh under the protocol below. First executing
+   driver: identify that run's source/actor ids before writing the
+   quarantine rows.
+3. **CROSS-VENDOR DUAL LABELING (standing practice):** two INDEPENDENT
+   workers from different vendors — one Claude (Sonnet) + one Codex —
+   blind-label the same pages (categories + flags).
+   - AGREE → the claim becomes machine CROSS-VERIFIED (SCHEMA_V2 §14
+     trust tier: grey solid + evidence icon) — eligible for Nick's
+     bulk-accept, NOT auto-confirmed: only a human decision resolves as
+     truth, and two models can agree and both be wrong (correlated
+     errors), so a 5–10% stratified blind audit of the AGREE pile is
+     mandatory.
+   - DISAGREE → review queue: Opus arbitrates (Claude tokens are the
+     cheaper pool) with Nick as final authority on anything
+     Opus flags uncertain; during the verification-debt era Nick
+     personally reviews the disagree pile.
+4. **General engineering practice:** same pattern for important
+   builds/analyses — two independent agents (cross-vendor when
+   possible), attention spent on the disagreements. Single-agent
+   default = Claude (Max plan headroom).
+
 **R2 instruction to the reviewer:** produce ML_ROADMAP_REVIEW_R2.md —
 confirm/contest these verdicts, then draft the LOCK version structure
 (final station cards incl. Stations 0 and 2b, gate ladder, risk

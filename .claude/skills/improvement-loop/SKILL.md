@@ -159,6 +159,17 @@ model is doing bulk work, the orchestration is wrong. Workers that go
 quiet get checked (output files, not promises); fresh narrow-mission agent
 beats a tired 150k-token one for rescue jobs.
 
+## 6a. Cross-vendor dual verification (Nick, 2026-07-11 — standing)
+
+For labeling and any important analysis: TWO independent blind workers
+from different vendors (Claude Sonnet + Codex). Agreement → machine
+CROSS-VERIFIED tier (bulk-accept eligible, never auto-confirmed; audit
+5–10% of agreements — correlated errors are real). Disagreement → Opus
+arbitration, Nick final; during the verification-debt era Nick reviews
+all disagreements himself. Single-agent default = Claude. The V2 pilot
+labeling done before 2026-07-12 is DISTRUSTED and quarantined (see
+ML_ROADMAP §8.2) — re-run under this protocol.
+
 ## 6b. Labeling waves (folded from orchestrate-pipeline, 2026-07-11)
 
 When Model-1 page labeling resumes: assignment files of ≤80 page ids per
