@@ -311,7 +311,16 @@ not technical disputes):**
    decisions superseded-non-binding via NEW rows, then re-run the 10
    pilot buildings fresh under the protocol below. First executing
    driver: identify that run's source/actor ids before writing the
-   quarantine rows.
+   quarantine rows. ROOT CAUSE (Nick, diagnosed 2026-07-11): the bad
+   orchestrator switched labelers to TEXT-ONLY extraction — labeling
+   from page text without viewing the page image. This violates the
+   standing CLAUDE.md rule ("labelers judge the page IMAGE; title block
+   is a hint, not a verdict") and cannot work: plan content is visual.
+   HARD GUARD for the re-run and forever: every labeling worker (Claude
+   AND Codex) must Read the rendered page image; text-only labeling
+   rows are auto-quarantine. (Text remains a fine FEATURE for training
+   Model 1 — the trained model may use text; agent labelers may not
+   label blind of the image.)
 3. **CROSS-VENDOR DUAL LABELING (standing practice):** two INDEPENDENT
    workers from different vendors — one Claude (Sonnet) + one Codex —
    blind-label the same pages (categories + flags).
