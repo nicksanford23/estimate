@@ -1,4 +1,4 @@
-# ML Roadmap & Demo Screen Map — v1.2 (R1+R2 verdicts appended; body amended by §7–§9)
+# ML Roadmap & Demo Screen Map — v1.3 (R1+R2+R3 verdicts appended; body amended by §7–§10)
 
 *Fable, 2026-07-11 (final Fable window). Purpose: the successor-proof ML
 plan + the screen inventory for the demo. Process: Nick runs this through
@@ -398,3 +398,66 @@ ML_ROADMAP_LOCKED_V1.md) per R2 §9's structure, incorporating §7–§9
 verdicts and Nick's ratifications above. Where a founder decision is
 still pending, mark the section PENDING-FOUNDER rather than choosing.
 End with LOCKED / STILL OPEN.
+
+## 10. ROUND-3 VERDICTS (Claude, 2026-07-11)
+
+**ADOPTED — R3 §1 lock-naming refusal.** My R3 instruction was wrong: a
+LOCKED file cannot contain PENDING-FOUNDER sections without gutting
+spec-driven-dev's lock semantics. R3 was right to refuse. The lock file
+is written only when STILL OPEN is empty; interim drafts are named
+LOCK_CANDIDATE.
+
+**ADOPTED — ALL TEN BLOCKERS (§3), none rejected:**
+1. Sealed-eval ordering: Nick commits blind FIRST → Sonnet/Codex label
+   independently under the frozen rubric → reveal/compare only after
+   all three commit → NO bulk-accept on calibration/sealed/canary
+   items. (Fixes a real leak in §8.3's interaction with the bootstrap.)
+2. Bulk-accept boundary: batch acceptances record blind=false + batch
+   provenance + audit rate; train-eligible after source qualification;
+   never gold calibration/eval truth.
+3. Quarantine mechanism: append-only ELIGIBILITY-DENIAL policy rows +
+   read-only `pilot_quarantine_manifest_v1` FIRST (no row mutation
+   while scoping). Logged as V2_CLARIFICATIONS item 15 for the SCHEMA_V2
+   checkpoint — correct that machine_observation has no status column
+   and binding is immutable; my §8.2 wording was schema-naive.
+4. Contradictory skills: CONFIRMED REAL. label-pages (writes legacy
+   truth), review-labels (hard-codes claude-code source),
+   triage-permits (agent tiers as truth), diagnose-model +
+   improvement-loop §2–4 (legacy keys as ground truth) must be
+   rewritten to V2 before ANY pilot agent launches. Interim guard
+   applied this session: RESTART NOTICE banners on all four skills;
+   full rewrites = first task of the next driver (pre-lock artifact
+   §6.4).
+5. Split-rule conflict: CLAUDE.md line updated this session — splits by
+   leakage group / plan set (conservative duplicates share a split;
+   firm holdout reported separately), never by page or loose document.
+6. 2/4/4 output named `verified_bootstrap_v1`, a bootstrap smoke eval —
+   NOT sufficient for P3/architecture selection; sealed set expands
+   cluster-new before promotion claims.
+7. Rubric burn rule: freeze rubric after buildings 1–2; semantic
+   changes relabel-or-burn affected sealed decisions.
+8. Dual-worker manifest (source hash, extraction id, rubric/taxonomy
+   version, vendor/model/prompt hash, blind flag, run id; no shared
+   outputs/context pre-commit).
+9. Geometry relevance clause: one traced region per GEOMETRY-CAPABLE
+   pilot building, minimum 8–10 diverse regions; no-plan buildings are
+   recorded coverage failures, not fabricated targets.
+10. `truth_inventory_v1` precedes the zero-count becoming a database
+    claim — enumerate existing V2 decisions so no legitimate fresh
+    human decision is hidden by the quarantine.
+
+**ADOPTED — §4 trust table** as the core of `label_policy_v1` (visual
+trust states do NOT encode purpose eligibility; datasets must
+distinguish blind-authored / inspected-single / uninspected-batch).
+
+**ENDORSED — §5 founder-decision wording** as the recommended answers
+to §9's six decisions. Nick: answering "approve §5 as written" closes
+STILL-OPEN item 1 in one message; deltas welcome per item.
+
+**R4 instruction:** after Nick's §5 answers land, FOLD everything —
+v1.0 body as amended by §7–§10 + R3's pre-lock artifact list (§6) —
+into ONE clean successor document, `ML_ROADMAP_LOCK_CANDIDATE_V1.md`
+(no appended-amendment layers). It becomes `ML_ROADMAP_LOCKED_V1.md`
+only when its STILL OPEN list is empty, per R3 §1. Remaining STILL-OPEN
+items (R3 list 2–7) each get an owner and exit artifact in the
+candidate.

@@ -22,8 +22,9 @@ Ask: could a competent human do this task given EXACTLY the model's inputs
 Bugs masquerade as "the model is weak." Cheap checks, in order:
 1. **Join integrity**: n(labeled ∩ embedded) ≈ expected? dtype mismatches
    (string vs int ids) silently produce empty joins.
-2. **Leakage check**: features fit on train only? split by PERMIT (revisions
-   of one project never straddle train/eval)? Suspiciously HIGH numbers are
+2. **Leakage check**: features fit on train only? split by frozen conservative
+   leakage groups with whole plan sets/buildings and related revisions/design
+   families together? Suspiciously HIGH numbers are
    a bug symptom too.
 3. **Threshold sanity**: if binary and multiclass behave like opposites, or
    metrics jump between ~0 and ~1 at threshold 0.5, it's probability
@@ -66,6 +67,14 @@ Never prescribe a fix for a constraint you didn't demonstrate.
 Append to STATE.md: the numbers, the named constraint, the evidence for it,
 the prescribed fix, and what result would confirm/refute the fix worked.
 A diagnosis that isn't written down will be re-derived at full price.
+
+## V2/reset truth gate
+
+Before interpreting any metric, inventory every linked label, extraction,
+answer key, geometry run, and decision. Require effective purpose-specific
+eligibility for every item; absence is denial. Legacy and unaudited machine
+semantics may be used only in an explicitly named `diagnostic_weak` snapshot
+and cannot support promotion, sufficiency, demo, or architecture decisions.
 
 ## Worked example (rung 1, 2026-07-04 — real)
 Leaderboard: best finish_recall@0.5 = 0.365; 100% finish recall only at

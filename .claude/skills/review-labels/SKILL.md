@@ -1,28 +1,27 @@
 ---
 name: review-labels
-description: Blind second-opinion review of page labels — re-judge the image first, then compare with the first-pass label. Used by label-reviewer agents.
+description: Compare isolated Claude/Codex V2 page observations and route disagreements and deterministic agreement audits to Nick.
 ---
 
-# Reviewing page labels (blind-then-compare)
+# Reviewing page labels — V2 dual-vendor policy
 
-You are the independent checker. The first labeler's answer is hidden from
-you on purpose until step 2. Anchoring on it would make you worthless.
+1. Require two completed observations from the same assignment, image hash,
+   extraction, taxonomy, and rubric version. A retry is a new run ID.
+2. Verify each worker ran in its separate read-only bundle and could not see
+   legacy labels, peer output, or shared scratch state.
+3. Compare primary category and every one of the eight flags independently.
+   Do not use source priority or silently merge answers.
+4. Exact per-claim agreement becomes `machine_cross_verified`; it is not a
+   human decision. Route every disagreement to Nick.
+5. Select the agreement audit deterministically and stratify it by category,
+   flags, confidence/uncertainty, building, and plan/schedule type. Record the
+   sampler version and seed. An overturned agreement expands that stratum.
+6. Nick's fresh decision may be written append-only to `v2.human_decision`
+   with actor, blind status, taxonomy version, and provenance. Corrections use
+   `v2.decision_relation`; never update/delete a decision.
+7. Never read or write `estimate.page_label`. Quarantine and effective
+   evidence eligibility are checked before any snapshot use; absence means
+   denied.
 
-Per assigned page:
-1. **Blind pass:** Read the page image and classify it yourself using the
-   full label-pages skill (same 15 categories, same observation fields).
-   Commit to your answer.
-2. **Compare:** only now fetch the first-pass row (database is Neon Postgres
-   via `./scripts/db.sh "SQL"` — never data/estimate.db):
-   `./scripts/db.sh "SELECT category, confidence, sheet_title FROM page_label
-    WHERE page_id=<id> AND source='claude-code' ORDER BY id DESC LIMIT 1"`
-3. **Write your row** (append-only, source='claude-code-review') with YOUR
-   judgment from step 1 — never switch to match the first pass. If you
-   genuinely reconsider after comparing, that's allowed, but say why in
-   `evidence` and cap confidence at 0.7.
-4. Agreement = same category. Disagreements are expected and fine — the
-   adjudicator settles them; your job is an honest independent opinion.
-
-Same mechanics as label-pages (batches of 10, ≤80 pages/run, honest
-confidence, site plans never keep=1). Report: pages reviewed, agree/disagree
-counts, disagreement page_ids.
+Report run pairs, agreement/disagreement by claim, sampled agreements, Nick's
+decisions/overturns, unresolved claims, and elapsed review time.

@@ -116,6 +116,13 @@ purpose-specific; training and evaluation use frozen leakage-safe snapshots.*
   application (walk-before-insert), violations rejected.
 - AI-agent labels are machine_observations, never human_decisions — even
   when imported from legacy files (v1.2).
+- **evidence_eligibility_event**(id, subject_type, subject_id, purpose,
+  eligible, reason_code, manifest_version, actor_type, actor_id, note,
+  created_at) is an APPEND-ONLY qualification/denial ledger. Effective
+  eligibility is the latest event for a subject+purpose; absence means DENY.
+  Quarantine never edits source rows. Dataset snapshot builders must require
+  an effective `eligible=true` event for every linked observation, decision,
+  extraction, schedule row, geometry run, or artifact used for that purpose.
 - Geometry corrections: **geometry_annotation** holds the rich payload
   (original+corrected geometry, action, failure_type, affected segments,
   label/material before+after, split/merge polygon links) and ALWAYS links

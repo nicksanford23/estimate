@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "estimate-agent-bridge": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "tools/agent-bridge/src/server.mjs",
+        "--host",
+        "claude"
+      ],
+      "env": {
+        "ESTIMATE_REPO_ROOT": "${CLAUDE_PROJECT_DIR:-.}"
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "estimate-agent-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Repo-local MCP bridge between Claude Code and Codex CLI",
+  "scripts": {
+    "start:codex": "node src/server.mjs --host codex",
+    "start:claude": "node src/server.mjs --host claude",
+    "smoke:live": "node scripts/live-smoke.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  }
+}

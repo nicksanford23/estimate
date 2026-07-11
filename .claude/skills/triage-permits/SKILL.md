@@ -1,6 +1,6 @@
 ---
 name: triage-permits
-description: Sort permits into SF-pipeline tiers (GOLD_ALIGNED / TRAIN_LAYERED / TRUTH_AREA / MATERIAL_ONLY / MODEL_TARGET / DISMISS) using a cheap mechanical scan + agentic confirmation, and produce Model-1 page labels as a byproduct. Read when deciding which permits to invest in for square-footage work.
+description: Sort plan sets/buildings into SF-pipeline candidate tiers using mechanical scans plus explicitly qualified human review; machine outputs are never truth.
 ---
 
 # Triaging permits for the square-footage pipeline
@@ -11,6 +11,12 @@ the right use, plus (as a byproduct of the same pass) Model-1 page labels.
 
 Core principle: **auto-triage everything cheaply; hand-invest only in the tiers
 worth it.** Most permits get scanned and parked, never hand-worked.
+
+V2/reset boundary: every tier, schedule key, layer judgment, answer key, and
+legacy verdict below is a machine candidate unless a fresh binding human
+decision qualifies it for the named purpose. Legacy artifacts remain
+diagnostic only. Operate on building + plan-set identity; permit numbers are
+source references, not dataset identity or split boundaries.
 
 ## The tiers (what each is FOR)
 
@@ -65,12 +71,12 @@ largest-polygon fraction) before calling a permit LAYERED. See
   polygonize into real rooms is NOT TRAIN_LAYERED (probe 24: `.3D`-solid layers
   pass the count test and still close nothing).
 - **E. Confirm + label — AGENTIC.**
-  - `schedule-reader` (Sonnet vision) reads each candidate schedule page →
-    confirms it is a real room-finish table with area and extracts
+  - `schedule-reader` (vision) reads each candidate schedule page → proposes
+    that it is a room-finish table with area and extracts candidate
     room→(name, floor, base, area). This REPLACES regex SF parsing, which
     over-fires on occupant-load callouts and stray "N SF" annotations.
-  - `page-labeler` agents label the plan-set pages (blind, per label-pages
-    skill) → Model-1 data (keep + non-keep) AND flags the flooring pages.
+  - the neutral Claude/Codex coordinator proposes page observations under the
+    frozen label-pages rubric; no legacy page-label writes.
   - For GOLD/TRAIN, confirm the wall segs are centerlines on a FLOOR PLAN
     (room-label density; not a legend/hatch/toilet-partition layer) AND that
     D3's closeability gate passed — segment count alone does not confirm TRAIN.
@@ -80,8 +86,9 @@ largest-polygon fraction) before calling a permit LAYERED. See
 
 ## Hard rules (do not bend)
 
-- **Never trust a mechanical GOLD/TRUTH.** The scanner's SF is a CANDIDATE only;
-  a `schedule-reader` (vision) must confirm it is a real per-room area table.
+- **Never trust a mechanical or agentic GOLD/TRUTH.** Scanner and worker output
+  are candidates. Only a fresh binding human decision plus an effective
+  purpose-specific eligibility event can qualify evidence.
   (Verified failure: 23-05848's "9-room SF" was occupant-load noise; 24-22310's
   "layers" were toilet-partition hatch. The scan flags, the agent confirms.)
 - **Schedule reading is VISION, not regex.** Regex cannot tell a room-finish
@@ -94,9 +101,9 @@ largest-polygon fraction) before calling a permit LAYERED. See
   `n_segs >= threshold` (verified: 25-33341's `.3D`-solid wall layer clears the
   segment count and still fails to close a single real room — see
   `experiments/probe24_two_permit_takeoff.md`).
-- **Page labels are append-only** (label-pages rules). Corrections = new rows.
-  Before triage trusts a page category, resolve to ONE label per page by source
-  priority: `adjudicate > review > first-pass` (a page can have all three rows).
+- **Page observations are append-only machine evidence.** Never resolve by
+  source priority. Preserve disagreements; Nick's binding decision resolves a
+  claim through the V2 decision graph.
 - **Don't trust sparse labels to judge flooring content** — big docs are
   under-labeled (8/109 seen). Judge by scanning the actual pages.
 - **Every page reference carries `{doc_id, page_index}`** — a bare page index is
@@ -112,8 +119,9 @@ largest-polygon fraction) before calling a permit LAYERED. See
 ## Worker routing
 
 - `schedule-reader` (Sonnet, vision): confirm + extract finish schedules.
-- `page-labeler` / `label-reviewer` (Sonnet): page labels (see label-pages).
-- `label-adjudicator` (Opus): tier disputes / hard confirmations only.
+- neutral Claude Sonnet + Codex workers: isolated page observations.
+- Nick: disagreements, audit sample, consequential quantities, and final
+  qualification. No third-agent adjudicator in the two-building pilot.
 - Scripts (`triage.py`): all mechanical scanning.
 - You (orchestrator): doc-selection judgment, spawn the agents, read results,
   set the final tier. Don't manually LABEL at scale — but manual inspection is
@@ -148,8 +156,9 @@ largest-polygon fraction) before calling a permit LAYERED. See
 
 ## Validation discipline (mandatory — we have over-claimed before)
 
-- Split by permit, never by page. Freeze an eval set before tuning; don't inspect
-  eval failures while changing rules.
+- Split by conservative leakage group and whole plan set/building, never by
+  page or document alone. Freeze assignments before tuning and keep related
+  revisions/design families together.
 - **No accuracy claim unless every number names its ground-truth source**
   (schedule SF vs dimension agreement vs hand-measured — never mixed).
 - Report by room-type (enclosed / open-zone / restroom-core / corridor /

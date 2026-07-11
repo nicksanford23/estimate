@@ -93,11 +93,14 @@ rooms (~13% of killed SF) -> must route to review, never silent-discard.
 - **Canaries** (must never regress, run every engine change): bank
   14-11290 doc 1494156 p3 (layer path, >=13 rooms) and hotel 17-35590
   doc 3523243 p9 (dense page that caused the original explosion).
+- Legacy grades and keys below are diagnostic history until requalified under
+  the V2 eligibility ledger; they cannot promote an engine or support a demo.
 - Grade PRODUCT ACTIONS (probe 23), not polygons-per-label: open-plan
   merges whose member rooms sum within tolerance are correct grouping —
   but a whole-floor collapse that nets out is MERGE_SUSPECT, not success.
 - Negative results get written up with the same care as wins.
-- Eval splits by PERMIT, never by page. Whale permits forced to train.
+- Eval splits by frozen conservative leakage group with whole plan sets,
+  buildings, revisions, and design families together; never by page.
 - A number is only trustworthy against an answer key or two independent
   methods agreeing. Say which one you have.
 - Verify inherited claims against raw data before repeating them (twice on
@@ -161,18 +164,19 @@ beats a tired 150k-token one for rescue jobs.
 
 ## 6a. Cross-vendor dual verification (Nick, 2026-07-11 — standing)
 
-For labeling and any important analysis: TWO independent blind workers
+For labeling and any important analysis: TWO independent isolated workers
 from different vendors (Claude Sonnet + Codex). Agreement → machine
 CROSS-VERIFIED tier (bulk-accept eligible, never auto-confirmed; audit
-5–10% of agreements — correlated errors are real). Disagreement → Opus
-arbitration, Nick final; during the verification-debt era Nick reviews
-all disagreements himself. Single-agent default = Claude. The V2 pilot
+5–10% of agreements — correlated errors are real). Disagreement → Nick
+final; there is no third-agent adjudicator in the two-building pilot. Nick
+reviews all disagreements himself. Single-agent output is machine-candidate
+evidence only. The V2 pilot
 labeling done before 2026-07-12 is DISTRUSTED and quarantined (see
 ML_ROADMAP §8.2) — re-run under this protocol.
 
 ## 6b. Labeling waves (folded from orchestrate-pipeline, 2026-07-11)
 
-When Model-1 page labeling resumes: assignment files of ≤80 page ids per
+When Model-1 page labeling resumes after the pilot safety gate: assignment files of ≤80 page ids per
 worker run (hard cap — context rot past that), built by SQL (rendered ∩
 unlabeled), ordered by PROJECT VALUE per Nick's 2026-07-05 priority:
 GOLD BAND first (permits with 10-80 rendered pages = product-matched
@@ -181,10 +185,9 @@ restaurant/retail/suite descriptions or finish vocab in text; 1-9-page
 permits allowed when keep-dense but never as eval packets; >150-page
 mammoths deferred, train-side only. SIBLING RULE: a permit with floor
 plans but zero finish pages → check its other docs for interior|finish|ID
-filenames, queue that single doc. One page-labeler agent per file;
-reviewers ride behind on confidence<0.8 ∪ flagged ∪ 10% audit;
-adjudicator (Opus) only on category disagreements. Labels append-only in
-Neon; under V2 they import as machine_observations, never
+filenames, queue that single doc. Each page goes through the neutral isolated
+Claude/Codex coordinator; Nick reviews all disagreements and the deterministic
+stratified agreement audit. Outputs append as machine_observations only, never
 human_decisions. Keep-list changes are versioned keep_policy edits
 (SCHEMA_V2 §14), never relabeling.
 

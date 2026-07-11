@@ -663,3 +663,158 @@ and `python3 scripts/pipeline.py board`.
   consultation proposals, not locked decisions.
 - NEXT: driver/founder replies per numbered component, adopts/rejects/modifies,
   and clarifies the bounded demo claim before any final-lock or mockup round.
+
+## ML roadmap consultation R2 - founder-declared label reset (2026-07-11, Codex)
+- Founder correction: Nick does not trust any semantic labels, training inputs,
+  answer keys, or human-like review judgments from the first ML process because
+  none received human review. This supersedes the weaker framing that only the
+  reported metrics carried founder-verification debt.
+- Wrote `ML_ROADMAP_REVIEW_R2.md` as the requested terse delta round. It treats
+  the current trusted semantic-label count as zero, preserves all legacy
+  artifacts as `legacy_unverified` / `diagnostic_only`, and withdraws probe
+  25-30 metrics from promotion, architecture, sufficiency, demo, and ship
+  decisions. Exact raw artifacts remain valid sources; extracted/layer/agent
+  semantics remain machine observations.
+- R2 reopens U-Net-vs-graph and the "architecture must change" hypothesis.
+  Before probe 31: write a versioned label book, add true blind review mode,
+  label the 10-building pilot completely (proposed split: 2 calibration / 4
+  development / 4 sealed bootstrap eval), build `verified_bootstrap_v1`, then
+  regrade every legacy engine unchanged against human truth.
+- Unqualified legacy labels may appear only in `diagnostic_weak` experiments.
+  A source that later passes human audit may enter a distinct `weak_train`
+  snapshot with measured noise, never calibration/frozen-test truth and never
+  mass-converted to binding human decisions.
+- R1's product/architecture corrections remain: Stations 0 and 2b, split
+  Station 3, area-schedule scope, human-confirmed constrained joins, two-axis
+  coverage, buildingId routes, gross perimeter vs net base, gate ladder, and
+  completed screen inventory. Approved review layouts need a blind/audit state,
+  not replacement layouts.
+- OPEN for founder: ratify the 2/4/4 bootstrap split; commit to one fully traced
+  geometry region per pilot building; choose independent 10% domain review vs
+  delayed founder relabel; decide whether audited legacy sources are worth
+  salvaging; confirm the first bounded external claim.
+
+## ML roadmap consultation R3 - lock withheld pending governance fixes (2026-07-11, Codex)
+- Read `ML_ROADMAP.md` v1.2 and Fable's Round-2 verdict. Wrote
+  `ML_ROADMAP_REVIEW_R3.md` instead of the requested LOCK document because six
+  founder decisions remain pending and a locked spec with PENDING sections
+  would violate the spec-driven-dev lock semantics.
+- R3 confirms the zero-trust reset, `verified_bootstrap_v1` before probe 31,
+  lean label books/blind UI state, early human audit of the four candidate area
+  keys, cross-vendor labeling as machine cross-verification only, and all
+  adopted R1/R2 station/product decisions.
+- New lock blocker: sealed evaluation must order Nick's blind raw-source label
+  before any Sonnet/Codex output is revealed. Cross-vendor agreements and Nick
+  bulk acceptance may become non-blind training decisions after source audit,
+  never calibration/frozen-test truth.
+- New lock blocker: the roadmap's proposed quarantine action is not yet
+  implementable append-only. `v2.machine_observation` has no status column and
+  immutable `human_decision.binding` cannot be flipped. R3 requires a read-only
+  truth inventory and quarantine manifest, followed by a constitutionally
+  specified registry or eligibility-denial mechanism.
+- New lock blocker: active `label-pages`, `review-labels`, `triage-permits`,
+  `diagnose-model`, improvement-loop, and `CLAUDE.md` rules still conflict with
+  V2/reset policy (legacy page_label writes/status updates, hard-coded vendor,
+  machine answer keys treated as truth, document-only split rule). Rewrite
+  these before launching pilot agents.
+- R3 recommends: approve 2/4/4 as bootstrap smoke evaluation only; delayed
+  blind self-relabel now and independent review later; audit legacy sources for
+  measured weak-train salvage; trace one region per geometry-capable building
+  with 8-10 total; use human-confirmed area-schedule as the first workflow
+  claim; approve buildingId routes and measure the audit time before fixing a
+  minutes/session budget.
+- STILL OPEN: founder ratifications, quarantine mechanism, sealed/bulk trust
+  semantics, process-skill rewrites, pilot/rubric manifests, blind-mode
+  acceptance criteria, and the larger P3 sealed-set composition.
+
+## Two-building ML pilot plan + UI audit (2026-07-11, Codex)
+- Founder narrowed the next pilot to two buildings and rejected a separate
+  five-page exercise. Wrote `ML_TWO_BUILDING_PILOT_PLAN.md`; the first five
+  pages are now only a coordinator smoke batch inside Building A, followed by
+  the rest of the real plan set.
+- Recommended complementary pilots from the live V2 inventory:
+  `26-10321-RNVN` (42 pages, one legacy geometry run, geometry-centric) and
+  `24-06748-RNVS` (15 pages, one schedule region / 36 candidate rows,
+  schedule-centric). Existing observations/runs remain legacy candidates.
+- Pilot trust flow: Claude Sonnet + Codex independently inspect the same
+  isolated rendered image; exact per-claim agreement = machine
+  cross-verified; Nick resolves all disagreements and audits a deterministic
+  stratified 10% of agreements; Nick confirms every consequential quantity,
+  scale, exclusion, link, and demo output. No third-agent adjudicator and no
+  blind human-authored labels.
+- Honest V2 UI status: Buildings index + Page Review are thin functional
+  slices; Rooms & Finishes and Geometry Review are partial legacy-backed
+  shells. Work Queue is image-only. Summary, Source Files, Activity, coverage,
+  V2 Datasets/Models/Pipeline, dual-label coordination, viewport/scale confirm,
+  schedule joins, live geometry corrections, customer upload/review, material
+  setup, and export are not built.
+- Web verification: production `npm run build` succeeds with network access
+  for Google Fonts (one Turbopack file-tracing warning). `npm run lint` fails
+  on two pre-existing React errors (`ReviewScreen` and `V2ReviewBoard`) and
+  reports nine warnings. Page Review lint must clear before the coordinator
+  smoke batch.
+- Immediate sequence: fold a lock candidate; truth inventory + quarantine
+  manifest; rewrite V2 labeling/truth skills; build neutral CLI coordinator;
+  add Page Review comparison/audit states; clear pilot-route lint; run Building
+  A pages + geometry walkthrough; run Building B schedule/join; review both
+  before retraining, probe 31, plugins, or a larger data commitment.
+
+## Bidirectional Claude/Codex MCP bridge (2026-07-11, Codex)
+- Founder clarified that the restart should be blank in the semantic sense:
+  no legacy machine output is accepted as trusted truth. No pilot labeling was
+  run in this session, no Postgres rows were written, and the restart's trusted
+  semantic-label count remains zero.
+- Founder chose to build the neutral MCP coordination surface before the truth
+  inventory so either conversational client can invoke the other without
+  manually coordinating terminals. Added `tools/agent-bridge/` using the
+  stable v1 official MCP TypeScript SDK over stdio.
+- Project registrations are bidirectional and host-specific:
+  `.codex/config.toml` exposes `ask_claude`; `.mcp.json` exposes `ask_codex` to
+  Claude. Both expose `consult_both`, `dual_page_label`, and `bridge_status`.
+  The gitignored Claude local settings approve only `estimate-agent-bridge`.
+- `dual_page_label` copies one rendered image into separate temporary worker
+  directories, runs Claude Sonnet and Codex concurrently, validates the same
+  structured category/flag schema, and reveals neither result to the other
+  before commit. It writes only a raw gitignored JSON artifact under
+  `data/agent_bridge/runs/`; the artifact says `database_writes=false` and
+  `trusted_semantic_truth=false`.
+- Automated MCP protocol tests pass 6/6 using fake local workers, including
+  host-specific tool exposure, symlink-escape rejection, separate dual-worker
+  output, per-claim comparison, and the no-human-truth invariant. The tests
+  require unsandboxed subprocess execution in this environment.
+- Live authenticated smoke passed both directions without page labeling:
+  Claude returned `BRIDGE_CLAUDE_OK` through the Codex-hosted tool and Codex
+  returned `BRIDGE_CODEX_OK` through the Claude-hosted tool. Claude MCP health
+  then reported `estimate-agent-bridge` connected; Codex lists the project MCP
+  enabled.
+- NEXT: truth inventory + read-only quarantine manifest, append-only
+  eligibility denial, V2 skill/rubric rewrite, then connect raw MCP runs to V2
+  machine observations and the Page Review disagreement/audit UI before the
+  first five real Building-A pages.
+
+## Two-building pilot pre-label safety (2026-07-11, Codex)
+- No page labels were run. Trusted semantic-label count remains zero.
+- Codex page-label subprocess is pinned at `model_reasoning_effort="medium"`
+  on every invocation and records `reasoning_effort` in the raw run artifact.
+  The model remains the configured Codex default; no undocumented `terra`
+  alias was introduced. Claude remains Sonnet/high effort.
+- Froze `pilot-page-label-v1` in
+  `docs/pilot/PAGE_LABEL_RUBRIC_V1.md` + executable schema/prompt. Rewrote the
+  active label-pages, review-labels, triage-permits, diagnose-model,
+  improvement-loop, and CLAUDE.md rules for V2 machine-observation-only writes,
+  Nick-final review, and conservative leakage-group/plan-set splits.
+- Added and applied append-only `v2.evidence_eligibility_event` governance.
+  Effective eligibility is latest-event-per-subject/purpose; absence means
+  DENY; UPDATE/DELETE are trigger-rejected. Sources are never mutated.
+- Generated `data/pilot_safety/truth_inventory_v1.json` and
+  `pilot_quarantine_manifest_v1.json`: 57 pages, 199 machine observations,
+  1 nonbinding legacy decision, 1 extraction, 36 schedule rows, 1 geometry
+  run = 238 legacy subjects. Appended 1,428 denial events (238 x 6 purposes).
+  Idempotency rerun inserted zero.
+- Bridge protocol tests pass 6/6 with fake workers, including a direct check
+  that the Codex labeling CLI receives the medium-reasoning config argument.
+- STILL BLOCKED BEFORE FIRST FIVE LABELS: connect raw bridge artifacts to V2
+  machine observations behind eligibility enforcement; add Page Review
+  comparison/disagreement/audit/quarantine states; clear its two lint errors
+  and pass the web build. Current lint remains 2 errors + 9 warnings. This is
+  intentionally not bypassed by the completed data/process safety work.

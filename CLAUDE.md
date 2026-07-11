@@ -19,12 +19,19 @@ Moonshot (later): auto-suggest room boundaries for square footage.
 - Never write another repo's tables. Never PUT to R2 without `%PDF` validation.
 
 ## Hard rules
-- `page_label` is append-only. NEVER UPDATE or DELETE label rows.
-- `keep` derives from category: 1 iff category ∈ {floor_plan, finish_plan,
-  finish_schedule, demo_plan}. Site plans are NEVER keep=1. Don't hand-set it.
-- Eval splits by document, never by random pages.
-- Worker agents: Sonnet. Adjudication: Opus. Max ~80 pages per agent run,
-  then exit — never keep labeling after context compaction.
+- V2 is authoritative. Legacy `estimate.page_label` is read-only history; new
+  agent labels are append-only `v2.machine_observation` candidates, never
+  `v2.human_decision`, and page status is not mutated by labeling.
+- `keep` is a versioned policy derived from category; it is not hand-labeled.
+- Evidence eligibility is append-only and purpose-specific. Missing
+  qualification means DENY. Quarantine never mutates source rows.
+- Dataset splits use frozen conservative leakage groups with whole plan sets,
+  buildings, revisions, and design families together—never random pages or
+  document/permit identity alone.
+- Two-building pilot page workers: isolated Claude Sonnet + Codex, with Codex
+  reasoning pinned to medium. Nick resolves all disagreements and audits the
+  deterministic stratified agreement sample; no third-agent adjudicator.
+- Max ~80 pages per worker run, then exit—never continue after compaction.
 - Labelers judge the page IMAGE (Read tool); title block is a hint, not a verdict.
 - data/ and .env are gitignored — no PDFs/PNGs/DB/secrets in git. Never commit unasked.
 - Spend big-model tokens only on design, pilot review, and mistake diagnosis.
@@ -33,5 +40,6 @@ Moonshot (later): auto-suggest room boundaries for square footage.
   agent fleets, sharded scripts, GPU over CPU. Never serialize work that can
   run concurrently; never wait on a step a cheap rental would collapse.
   Small compute spend (<$5) for hours of wall-clock: just do it, note cost.
-- Quality gates that never bend for speed: blind labeling, reviewer tier,
-  by-permit eval splits, append-only labels.
+- Quality gates that never bend for speed: isolated dual-vendor labeling,
+  founder review/audit, leakage-safe frozen splits, append-only evidence and
+  decisions, and default-deny snapshot eligibility.

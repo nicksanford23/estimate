@@ -1,0 +1,13 @@
+[mcp_servers.estimate_agent_bridge]
+command = "node"
+args = ["/workspaces/estimate/tools/agent-bridge/src/server.mjs", "--host", "codex"]
+cwd = "/workspaces/estimate"
+env = { ESTIMATE_REPO_ROOT = "/workspaces/estimate" }
+enabled = true
+required = false
+startup_timeout_sec = 20
+tool_timeout_sec = 900
+default_tools_approval_mode = "auto"
+
+[mcp_servers.estimate_agent_bridge.tools.dual_page_label]
+approval_mode = "prompt"
