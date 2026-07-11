@@ -12,11 +12,15 @@ export type BuildingListRow = {
   permit_num: string;
   page_count: number;
   doc_count: number;
+  address_raw: string | null;
+  city_description: string | null;
+  city_sqft: number | null;
 };
 
 export async function listPilotBuildings(): Promise<BuildingListRow[]> {
   return q<BuildingListRow>(
     `SELECT b.id AS building_id, b.name AS building_name, p.permit_num,
+            p.address_raw, p.city_description, p.city_sqft::float AS city_sqft,
             COUNT(DISTINCT pg.id)::int AS page_count,
             COUNT(DISTINCT d.id)::int AS doc_count
      FROM v2.building b
@@ -24,7 +28,7 @@ export async function listPilotBuildings(): Promise<BuildingListRow[]> {
      JOIN v2.permit p ON p.id = pb.permit_id
      LEFT JOIN v2.document d ON d.permit_id = p.id
      LEFT JOIN v2.page pg ON pg.document_id = d.id
-     GROUP BY b.id, b.name, p.permit_num
+     GROUP BY b.id, b.name, p.permit_num, p.address_raw, p.city_description, p.city_sqft
      ORDER BY b.id`
   );
 }
