@@ -409,6 +409,9 @@ table.ops-table td.wrap { white-space: normal; }
 .v2board { display: flex; gap: 24px; max-width: 1400px; margin: 0 auto; padding: 0 18px 60px; align-items: flex-start; }
 .v2board-main { flex: 1; min-width: 0; }
 .v2panel { position: sticky; top: 18px; width: 340px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-height: calc(100vh - 36px); overflow-y: auto; }
+.v2panel-nav { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 7px; background: var(--surface); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 11px; }
+.v2panel-nav .btn { padding: 5px 7px; font-size: 10.5px; }
+.v2panel-nav .btn:disabled { opacity: 0.4; cursor: default; }
 .v2panel-img { background: var(--surface-2); border-bottom: 1px solid var(--line); }
 .v2panel-img img { width: 100%; display: block; }
 .v2panel-body { padding: 14px 16px 18px; }
@@ -435,7 +438,17 @@ table.ops-table td.wrap { white-space: normal; }
 .v2card-thumb { width: 100%; aspect-ratio: 17 / 22; object-fit: cover; object-position: top; display: block; }
 .v2card-status { position: absolute; top: 6px; right: 6px; font-family: var(--font-mono); font-size: 9.5px; padding: 2px 6px; border-radius: 5px; background: rgba(20,24,29,0.75); color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
 .v2card-status-confirmed { background: color-mix(in srgb, var(--good) 80%, black); }
-.v2card-status-suggested { background: color-mix(in srgb, var(--warn) 80%, black); }
+.v2card-status-match { background: color-mix(in srgb, var(--accent) 78%, black); }
+.v2card-status-disagree { background: color-mix(in srgb, var(--bad) 82%, black); }
+.v2card-status-audit { background: color-mix(in srgb, var(--warn) 82%, black); color: #17120a; }
+.v2card-status-unlabeled { background: rgba(70,78,88,0.82); }
+.v2compare { border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; margin-bottom: 14px; background: var(--surface-2); }
+.v2compare-row { display: grid; grid-template-columns: 58px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; font-family: var(--font-mono); font-size: 11px; }
+.v2compare-row small { color: var(--muted); }
+.v2agree { color: var(--accent-ink); }
+.v2disagree { color: var(--bad); font-weight: 700; }
+.v2claim-diff { color: var(--bad); border-top: 1px solid var(--line); padding: 5px 0; font-family: var(--font-mono); font-size: 10.5px; }
+.v2empty-machine { border: 1px dashed var(--line); border-radius: 9px; padding: 9px 10px; margin-bottom: 14px; color: var(--muted); font-size: 12px; }
 .v2card-cap { font-family: var(--font-mono); font-size: 12px; padding: 8px 9px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v2card-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 9px 9px; }
 
@@ -446,6 +459,7 @@ table.ops-table td.wrap { white-space: normal; }
 @media (max-width: 900px) {
   .v2board { flex-direction: column; }
   .v2panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; border-radius: 14px 14px 0 0; max-height: 80vh; z-index: 50; }
+  .v2panel-close { font-weight: 700; border-color: var(--accent); color: var(--accent-ink); }
 }
 
 /* ---- V2 tab row (Pages | Rooms & Finishes | Geometry Review) ---- */

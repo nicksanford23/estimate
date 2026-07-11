@@ -1,4 +1,5 @@
 import { q } from "./db";
+import { createHash } from "node:crypto";
 export { TAXONOMY_V2 } from "./v2Taxonomy";
 
 // Thin Page Review on V2 (slice S1). Reads v2.* identity/claims tables and
@@ -46,6 +47,21 @@ export type V2PageRow = {
   binding_category: string | null;
   binding_decision_id: number | null;
   flags: string[];
+  machine_run_id: string | null;
+  machine_state: "unlabeled" | "match" | "disagree" | "audit";
+  claude_label: V2VendorLabel | null;
+  codex_label: V2VendorLabel | null;
+  quarantined_observation_count: number;
+};
+
+export type V2VendorLabel = {
+  category: string;
+  flags: string[];
+  confidence: number | null;
+  evidence: string;
+  uncertainty: string;
+  model: string | null;
+  reasoning_effort: string | null;
 };
 
 export async function getBuildingDetail(permit: string) {
@@ -87,10 +103,42 @@ export async function getBuildingDetail(permit: string) {
     : [];
   const pageIds = pages.map((p) => p.page_id);
 
+  type BridgeObs = {
+    target_id: number;
+    claim: string;
+    value_json: Record<string, unknown>;
+    source: string;
+    source_version: string;
+    created_at: string;
+  };
+  const bridgeObs = pageIds.length
+    ? await q<BridgeObs>(
+        `SELECT target_id, claim, value_json, source, source_version, created_at::text
+         FROM v2.machine_observation
+         WHERE target_type='page' AND target_id=ANY($1)
+           AND source IN ('agent_bridge:claude','agent_bridge:codex')
+           AND claim IN ('page_category','page_flags')
+         ORDER BY created_at DESC, id DESC`,
+        [pageIds]
+      )
+    : [];
+  const quarantineCounts = pageIds.length
+    ? await q<{ target_id: number; count: number }>(
+        `SELECT mo.target_id, COUNT(*)::int AS count
+         FROM v2.machine_observation mo
+         WHERE mo.target_type='page' AND mo.target_id=ANY($1)
+           AND mo.source NOT IN ('agent_bridge:claude','agent_bridge:codex')
+         GROUP BY mo.target_id`,
+        [pageIds]
+      )
+    : [];
+  const quarantineByPage = new Map(quarantineCounts.map((r) => [r.target_id, r.count]));
+
   const catObs = pageIds.length
     ? await q<{ target_id: number; value_json: { category?: string }; source: string; created_at: string }>(
         `SELECT target_id, value_json, source, created_at::text FROM v2.machine_observation
          WHERE target_type = 'page' AND claim = 'page_category' AND target_id = ANY($1)
+           AND source IN ('agent_bridge:claude','agent_bridge:codex')
          ORDER BY created_at DESC`,
         [pageIds]
       )
@@ -99,6 +147,7 @@ export async function getBuildingDetail(permit: string) {
     ? await q<{ target_id: number; value_json: { title?: string } }>(
         `SELECT target_id, value_json FROM v2.machine_observation
          WHERE target_type = 'page' AND claim = 'sheet_title' AND target_id = ANY($1)
+           AND source IN ('agent_bridge:claude','agent_bridge:codex')
          ORDER BY created_at DESC`,
         [pageIds]
       )
@@ -122,6 +171,10 @@ export async function getBuildingDetail(permit: string) {
     ? await q<{ target_id: number; value_json: { flags?: string[] }; decided_at: string }>(
         `SELECT target_id, value_json, decided_at::text FROM v2.human_decision
          WHERE target_type = 'page' AND claim = 'page_flags' AND target_id = ANY($1)
+           AND binding = TRUE
+           AND NOT EXISTS (
+             SELECT 1 FROM v2.decision_relation dr
+             WHERE dr.relation='supersedes' AND dr.to_decision_id=v2.human_decision.id)
          ORDER BY decided_at DESC`,
         [pageIds]
       )
@@ -131,6 +184,56 @@ export async function getBuildingDetail(permit: string) {
     if (!flagsByPage.has(d.target_id) && Array.isArray(d.value_json?.flags)) {
       flagsByPage.set(d.target_id, d.value_json.flags!);
     }
+  }
+
+  const bridgeByPage = new Map<number, { runId: string; claude: V2VendorLabel | null; codex: V2VendorLabel | null }>();
+  const runs = new Map<string, { pageId: number; runId: string; claude: Partial<V2VendorLabel>; codex: Partial<V2VendorLabel> }>();
+  for (const o of bridgeObs) {
+    const vendor = o.source.endsWith(":claude") ? "claude" : "codex";
+    const key = `${o.target_id}:${o.source_version}`;
+    const run = runs.get(key) ?? { pageId: o.target_id, runId: o.source_version, claude: {}, codex: {} };
+    const value = o.value_json;
+    const target = run[vendor];
+    if (o.claim === "page_category") {
+      target.category = typeof value.category === "string" ? value.category : "";
+      target.confidence = typeof value.confidence === "number" ? value.confidence : null;
+      target.evidence = typeof value.evidence === "string" ? value.evidence : "";
+      target.uncertainty = typeof value.uncertainty === "string" ? value.uncertainty : "";
+      target.model = typeof value.model === "string" ? value.model : null;
+      target.reasoning_effort = typeof value.reasoning_effort === "string" ? value.reasoning_effort : null;
+    } else if (o.claim === "page_flags") {
+      target.flags = Array.isArray(value.flags) ? value.flags.filter((f): f is string => typeof f === "string") : [];
+    }
+    runs.set(key, run);
+  }
+  for (const run of runs.values()) {
+    if (bridgeByPage.has(run.pageId)) continue;
+    const complete = (v: Partial<V2VendorLabel>): v is V2VendorLabel =>
+      typeof v.category === "string" && Array.isArray(v.flags);
+    bridgeByPage.set(run.pageId, {
+      runId: run.runId,
+      claude: complete(run.claude) ? run.claude : null,
+      codex: complete(run.codex) ? run.codex : null,
+    });
+  }
+  const exactMachineMatch = (machine: { claude: V2VendorLabel | null; codex: V2VendorLabel | null } | undefined) =>
+    Boolean(machine?.claude && machine?.codex &&
+      machine.claude.category === machine.codex.category &&
+      JSON.stringify([...machine.claude.flags].sort()) === JSON.stringify([...machine.codex.flags].sort()));
+  const auditStrata = new Map<string, number[]>();
+  for (const page of pages) {
+    const machine = bridgeByPage.get(page.page_id);
+    if (!exactMachineMatch(machine) || !machine?.claude) continue;
+    const confidenceBand = (machine.claude.confidence ?? 0) < 0.8 ? "low" : "high";
+    const uncertaintyBand = machine.claude.uncertainty.trim() ? "uncertain" : "clear";
+    const stratum = `${machine.claude.category}|${confidenceBand}|${uncertaintyBand}`;
+    auditStrata.set(stratum, [...(auditStrata.get(stratum) ?? []), page.page_id]);
+  }
+  const auditPageIds = new Set<number>();
+  for (const ids of auditStrata.values()) {
+    ids.sort((a, b) => createHash("sha256").update(`pilot-audit-v1:${permit}:${a}`).digest("hex")
+      .localeCompare(createHash("sha256").update(`pilot-audit-v1:${permit}:${b}`).digest("hex")));
+    ids.slice(0, Math.max(1, Math.ceil(ids.length * 0.1))).forEach((id) => auditPageIds.add(id));
   }
 
   const supersededIds = pageIds.length
@@ -173,6 +276,9 @@ export async function getBuildingDetail(permit: string) {
       .map((p) => {
         const claim = firstCatByPage.get(p.page_id);
         const binding = bindingByPage.get(p.page_id);
+        const machine = bridgeByPage.get(p.page_id);
+        const exactMatch = exactMachineMatch(machine);
+        const auditSelected = exactMatch && auditPageIds.has(p.page_id);
         return {
           page_id: p.page_id,
           pdf_page_index: p.pdf_page_index,
@@ -186,6 +292,11 @@ export async function getBuildingDetail(permit: string) {
           binding_category: binding?.category ?? null,
           binding_decision_id: binding?.id ?? null,
           flags: flagsByPage.get(p.page_id) ?? [],
+          machine_run_id: machine?.runId ?? null,
+          machine_state: !machine?.claude || !machine?.codex ? "unlabeled" : exactMatch ? (auditSelected ? "audit" : "match") : "disagree",
+          claude_label: machine?.claude ?? null,
+          codex_label: machine?.codex ?? null,
+          quarantined_observation_count: quarantineByPage.get(p.page_id) ?? 0,
         };
       });
     return {

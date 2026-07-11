@@ -19,14 +19,14 @@ const KEEP_POLICY = new Set(["floor_plan", "finish_plan", "finish_schedule", "de
 // on the same append-only /api/v2/decide route used for page_category.
 // Canonical 8 flags per SCHEMA_V2 §4 — do not invent alternates.
 const FLAGS = [
-  { key: "contains_floor_plan", label: "contains floor plan" },
-  { key: "contains_finish_schedule", label: "contains finish schedule" },
-  { key: "contains_legend", label: "contains legend" },
-  { key: "contains_area_table", label: "contains area table" },
   { key: "multiple_viewports", label: "multiple viewports" },
-  { key: "enlarged_plan", label: "enlarged plan" },
-  { key: "flooring_scope", label: "flooring scope" },
-  { key: "geometry_candidate", label: "geometry candidate" },
+  { key: "contains_area_table", label: "contains area table" },
+  { key: "scale_visible", label: "scale visible" },
+  { key: "finish_codes_visible", label: "finish codes visible" },
+  { key: "table_present", label: "table present" },
+  { key: "room_labels_visible", label: "room labels visible" },
+  { key: "dimensions_visible", label: "dimensions visible" },
+  { key: "possible_duplicate", label: "possible duplicate" },
 ] as const;
 
 type DocGroup = {
@@ -71,8 +71,10 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
   const [draftCategory, setDraftCategory] = useState<string>("");
 
   useEffect(() => {
-    setDraftCategory(selectedState?.binding ?? selectedPage?.claimed_category ?? "");
-    setErr(null);
+    queueMicrotask(() => {
+      setDraftCategory(selectedState?.binding ?? selectedPage?.claude_label?.category ?? "");
+      setErr(null);
+    });
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const confirmedCount = Array.from(state.values()).filter((s) => s.binding).length;
@@ -184,9 +186,17 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
                   const s = state.get(page.page_id)!;
                   const isSelected = page.page_id === selectedId;
                   const thumbSrc = `/api/opspage/${page.onestop_doc_id}/${page.pdf_page_index}?w=560`;
-                  const statusLabel = s.binding ? "confirmed" : page.claimed_category ? "suggested" : "unlabeled";
-                  const shownFlags = s.flags.slice(0, 2);
-                  const overflow = s.flags.length - shownFlags.length;
+                  const statusLabel = s.binding ? "confirmed" : page.machine_state;
+                  const machineFlags = page.machine_state === "match" || page.machine_state === "audit" ? page.claude_label?.flags ?? [] : [];
+                  const displayFlags = s.flags.length ? s.flags : machineFlags;
+                  const shownFlags = displayFlags.slice(0, 2);
+                  const overflow = displayFlags.length - shownFlags.length;
+                  const displayCategory = s.binding ?? ((page.machine_state === "match" || page.machine_state === "audit") ? page.claude_label?.category : null);
+                  const hover = s.binding
+                    ? `Human confirmed: ${s.binding}`
+                    : page.claude_label && page.codex_label
+                      ? `Claude: ${page.claude_label.category} · Codex: ${page.codex_label.category}`
+                      : "No pilot label run yet";
                   return (
                     <button
                       key={page.page_id}
@@ -197,12 +207,12 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
                       <div className="v2card-thumbwrap">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={thumbSrc} alt={caption(page, i)} loading="lazy" className="v2card-thumb" />
-                        <span className={`v2card-status v2card-status-${statusLabel}`}>{statusLabel}</span>
+                        <span className={`v2card-status v2card-status-${statusLabel}`} title={hover}>{statusLabel}</span>
                       </div>
                       <div className="v2card-cap">{caption(page, i)}</div>
                       <div className="v2card-chips">
                         <span className="chip" style={s.binding ? { borderStyle: "solid", borderColor: "var(--good)", color: "var(--good)" } : { borderStyle: "dashed" }}>
-                          {s.binding ?? page.claimed_category ?? "unlabeled"}
+                          {displayCategory ?? (page.machine_state === "disagree" ? "review disagreement" : "unlabeled")}
                         </span>
                         {shownFlags.map((f) => (
                           <span key={f} className="chip">{FLAGS.find((x) => x.key === f)?.label ?? f}</span>
@@ -224,14 +234,43 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
         </div>
       </div>
 
+      {selectedPage && (
       <aside className="v2panel">
-        {selectedPage ? (
+          <div className="v2panel-nav">
+            <span>Page {flat.findIndex((p) => p.page_id === selectedId) + 1} of {flat.length}</span>
+            <button type="button" className="btn v2panel-close" onClick={() => setSelectedId(null)}>Back to pages</button>
+          </div>
+          {(
           <>
             <div className="v2panel-img">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/opspage/${selectedPage.onestop_doc_id}/${selectedPage.pdf_page_index}?w=900`} alt="selected page" />
             </div>
             <div className="v2panel-body">
+              <div className="eyebrow" style={{ marginBottom: 6 }}>Machine comparison</div>
+              {selectedPage.claude_label && selectedPage.codex_label ? (
+                <div className="v2compare">
+                  <div className="v2compare-row">
+                    <strong>Claude</strong>
+                    <span className={selectedPage.claude_label.category === selectedPage.codex_label.category ? "v2agree" : "v2disagree"}>{selectedPage.claude_label.category}</span>
+                    <small>{Math.round((selectedPage.claude_label.confidence ?? 0) * 100)}%</small>
+                  </div>
+                  <div className="v2compare-row">
+                    <strong>Codex</strong>
+                    <span className={selectedPage.claude_label.category === selectedPage.codex_label.category ? "v2agree" : "v2disagree"}>{selectedPage.codex_label.category}</span>
+                    <small>{Math.round((selectedPage.codex_label.confidence ?? 0) * 100)}% · {selectedPage.codex_label.reasoning_effort ?? "configured"}</small>
+                  </div>
+                  {FLAGS.filter((flag) => selectedPage.claude_label?.flags.includes(flag.key) !== selectedPage.codex_label?.flags.includes(flag.key)).map((flag) => (
+                    <div className="v2claim-diff" key={flag.key}>
+                      {flag.label}: Claude {selectedPage.claude_label?.flags.includes(flag.key) ? "yes" : "no"} · Codex {selectedPage.codex_label?.flags.includes(flag.key) ? "yes" : "no"}
+                    </div>
+                  ))}
+                  <div className="v2micro">{selectedPage.machine_state === "audit" ? "machine match · selected for your audit" : selectedPage.machine_state === "match" ? "exact machine match · not human truth" : "machine disagreement · your review required"}</div>
+                </div>
+              ) : (
+                <div className="v2empty-machine">No pilot label run yet. Legacy suggestions are quarantined and hidden.</div>
+              )}
+
               <div className="eyebrow" style={{ marginBottom: 6 }}>Category (choose one)</div>
               <div className="v2panel-catgrid">
                 {TAXONOMY_V2.map((cat) => (
@@ -277,10 +316,9 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
               <div className="v2micro">your decision outranks machine suggestions</div>
             </div>
           </>
-        ) : (
-          <div className="v2panel-body"><p style={{ color: "var(--muted)" }}>Select a page.</p></div>
-        )}
+          )}
       </aside>
+      )}
     </div>
   );
 }

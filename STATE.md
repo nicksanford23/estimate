@@ -818,3 +818,67 @@ and `python3 scripts/pipeline.py board`.
   comparison/disagreement/audit/quarantine states; clear its two lint errors
   and pass the web build. Current lint remains 2 errors + 9 warnings. This is
   intentionally not bypassed by the completed data/process safety work.
+
+## Pilot Page Review comparison states (2026-07-11, Codex)
+- Implemented the founder-selected compact interaction in the existing page
+  cards/right panel; no separate comparison page. Card states: gray unlabeled,
+  blue exact machine match, red disagreement, amber deterministic audit, green
+  fresh human confirmation. Hover summarizes both vendors; click shows both
+  categories/confidences and only differing flags in the existing panel.
+- Corrected the UI from an obsolete invented flag set to the frozen canonical
+  eight in `pilot-page-label-v1`. Active Page Review now reads only
+  `agent_bridge:claude|codex` observations; legacy suggestions and nonbinding
+  imported flag decisions are hidden, not deleted.
+- Added `scripts/import_bridge_run.py`: explicit, idempotent raw-artifact -> V2
+  machine-observation import (4 claims/vendor). It rejects non-machine-only
+  artifacts and creates zero human decisions / eligibility approvals.
+- Audit sampler `pilot-audit-v1` is deterministic and 10%-per-stratum using
+  building, category, confidence band, and uncertainty band; minimum one match
+  per represented stratum. Agreement remains machine-only until Nick confirms.
+- Verification: bridge 6/6; Python compile passes; web lint 0 errors; production
+  build generated a fresh BUILD_ID (only the known NFT tracing warning); live
+  Building-A V2 route returns HTTP 200 through the public tunnel.
+- No page labels run yet. NEXT: Nick visually checks the empty-state/card/panel
+  layout, then run/import the first five Building-A pages and review all five as
+  the coordinator smoke gate.
+
+## Building A five-page dual-label smoke (2026-07-11, Codex)
+- Founder authorized the first five pages. V2 page ids 224-228 map to immutable
+  doc 9058456 PDF indexes 0-4. Legacy image paths were stale/missing, so the
+  first bridge attempt safely failed before workers ran; rendered fresh 2200px
+  images from `data/render_cache/pdf/9058456.pdf` with the new reproducible
+  `scripts/render_pilot_smoke.py`.
+- First real dual run exposed a Codex structured-output compatibility bug:
+  `uniqueItems` is unsupported by the current response schema endpoint. Claude
+  completed; Codex failed; no partial results were imported. Removed only that
+  schema keyword (Zod still deduplicates flags), added a regression test and an
+  isolated Codex-only retry that preserves the committed Claude result and
+  failed attempt without exposing Claude output to Codex. Bridge tests 7/7.
+- Codex-medium retry succeeded for all five. Comparison: page 224 exact match
+  `cover_index`; page 225 category disagreement (Claude `floor_plan`, Codex
+  `other`); page 226 both `life_safety` with a `table_present` flag dispute;
+  pages 227-228 exact match `life_safety`. Total: 3 exact matches, 1 category
+  disagreement, 1 flag-only disagreement.
+- Imported exactly 40 machine observations: 5 pages x 2 vendors x 4 claims
+  (category, flags, sheet number, sheet title). Import idempotency confirmed
+  (repeat inserted 0). Created 0 human decisions and 0 eligibility approvals.
+  Live Page Review returns 200 and now shows the blue/red/amber states for Nick.
+- NEXT: Nick reviews all five in Page Review, resolves the two disagreements,
+  and audits the amber agreement(s). Only after that human smoke check should
+  the remaining 37 Building-A pages run.
+
+## Final Codex handoff / UX correction (2026-07-11)
+- Added `CLAUDE_MCP_HANDOFF.md` for the next Claude Opus session: exact MCP
+  surfaces, smoke state, commands/invariants, and next human gate.
+- Founder needs future batch coordination to be ASYNCHRONOUS by vendor because
+  Claude and Codex usage replenish differently: Claude may label 10/25/35 pages
+  ahead; Codex later catches up against the exact frozen assignment bundles.
+  Comparisons form only after both committed outputs exist; pending states must
+  be `awaiting_codex|awaiting_claude`; neither vendor may see peer output. This
+  is explicitly a design request for Opus, NOT implemented in this session.
+- UX correction after founder feedback: the first smoke page again opens with
+  the full existing comparison/confidence/flags panel visible. The ONLY added
+  escape is `Back to pages`, which closes without saving so Nick can select any
+  other card and later return. Removed the over-broad previous/next redesign.
+- Do not run the remaining 37 Building-A pages until Nick accepts this corrected
+  smoke interaction and Opus scopes the asynchronous vendor queues.

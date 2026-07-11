@@ -36,13 +36,15 @@ export default function ReviewScreen({ permit, data }: { permit: string; data: D
   // hydration mismatch by starting from the pipeline defaults, then applying
   // localStorage overrides right after mount)
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(storageKey(permit));
-      if (raw) setOverrides(JSON.parse(raw));
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setHydrated(true);
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(storageKey(permit));
+        if (raw) setOverrides(JSON.parse(raw));
+      } catch {
+        /* ignore corrupt storage */
+      }
+      setHydrated(true);
+    });
   }, [permit]);
 
   const persist = useCallback(

@@ -40,7 +40,6 @@ export const PAGE_LABEL_JSON_SCHEMA = Object.freeze({
     flags: {
       type: "array",
       items: { type: "string", enum: PAGE_FLAGS },
-      uniqueItems: true,
     },
     sheet_number: { type: "string" },
     sheet_title: { type: "string" },

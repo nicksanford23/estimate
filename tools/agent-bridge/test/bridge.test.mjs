@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { parseJsonOutput, resolveProjectFile } from "../src/bridge.mjs";
-import { comparePageLabels } from "../src/page-label.mjs";
+import { PAGE_LABEL_JSON_SCHEMA, PageLabelSchema, comparePageLabels } from "../src/page-label.mjs";
 
 const baseLabel = {
   category: "floor_plan",
@@ -48,4 +48,10 @@ test("resolveProjectFile rejects symlink escapes", async () => {
 
 test("parseJsonOutput accepts a final JSON line after harmless output", () => {
   assert.deepEqual(parseJsonOutput('notice\n{"ok":true}\n'), { ok: true });
+});
+
+test("runtime validation deduplicates flags even without unsupported JSON Schema uniqueItems", () => {
+  const parsed = PageLabelSchema.parse({ ...baseLabel, flags: ["scale_visible", "scale_visible"] });
+  assert.deepEqual(parsed.flags, ["scale_visible"]);
+  assert.equal(PAGE_LABEL_JSON_SCHEMA.properties.flags.uniqueItems, undefined);
 });

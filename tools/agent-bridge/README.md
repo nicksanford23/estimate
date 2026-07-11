@@ -38,6 +38,18 @@ Claude and Codex concurrently, and reveals neither output to the other before
 both finish. It compares the primary category and each canonical flag. The raw
 artifact is written to `data/agent_bridge/runs/`, which is gitignored.
 
+For a V2 pilot page, use `page_ref` in the form `v2-page:<id>`. After both
+workers finish, import the raw artifact explicitly:
+
+```bash
+python scripts/import_bridge_run.py data/agent_bridge/runs/<run-id>.json
+```
+
+The importer writes four machine observations per successful vendor and is
+idempotent by run/vendor/claim. It creates no human decision or eligibility
+approval. Page Review reads only `agent_bridge:claude` and
+`agent_bridge:codex` observations; quarantined legacy suggestions remain hidden.
+
 ## Truth boundary
 
 The bridge never writes Postgres rows. Agreement is recorded only as

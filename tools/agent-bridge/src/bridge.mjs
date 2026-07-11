@@ -341,7 +341,7 @@ async function runClaudePageLabel({ workspace, imageFilename, timeoutSeconds }) 
   }
 }
 
-async function runCodexPageLabel({ workspace, imageFilename, timeoutSeconds }) {
+export async function runCodexPageLabel({ workspace, imageFilename, timeoutSeconds }) {
   const startedAt = process.hrtime.bigint();
   const model = process.env.AGENT_BRIDGE_CODEX_MODEL || null;
   const reasoningEffort = process.env.AGENT_BRIDGE_CODEX_LABEL_REASONING_EFFORT || "medium";
@@ -480,6 +480,46 @@ export async function dualPageLabel({
       rm(claudeWorkspace, { recursive: true, force: true }),
       rm(codexWorkspace, { recursive: true, force: true }),
     ]);
+  }
+}
+
+export async function retryCodexForRun({ root, artifactPath, timeoutSeconds = 600 }) {
+  const artifactFile = await resolveProjectFile(root, artifactPath);
+  const artifact = parseJsonOutput(await readFile(artifactFile.absolute, "utf8"));
+  if (artifact.task !== "dual_page_label" || !artifact.outputs?.claude?.ok) {
+    throw new Error("Retry requires a dual-page artifact with a completed Claude result");
+  }
+  const image = await resolveProjectFile(root, artifact.image?.project_path);
+  if ((await sha256File(image.absolute)) !== artifact.image.sha256) {
+    throw new Error("Source image hash no longer matches the failed run");
+  }
+  const extension = extname(image.absolute).toLowerCase();
+  const workspace = await mkdtemp(join(tmpdir(), "estimate-label-codex-retry-"));
+  const imageFilename = `page${extension}`;
+  try {
+    await copyFile(image.absolute, join(workspace, imageFilename));
+    const codex = await runCodexPageLabel({ workspace, imageFilename, timeoutSeconds });
+    const priorAttempts = artifact.outputs.codex_attempts ?? [];
+    artifact.outputs.codex_attempts = [...priorAttempts, artifact.outputs.codex];
+    artifact.outputs.codex = codex;
+    artifact.comparison = codex.ok
+      ? comparePageLabels(artifact.outputs.claude.response, codex.response)
+      : {
+          state: "worker_failure",
+          all_claims_agree: false,
+          human_truth: false,
+          requires_human_review: true,
+          claims: [],
+          disagreement_keys: [],
+        };
+    artifact.retry_updated_at = new Date().toISOString();
+    const finalPath = join(root, artifactPath);
+    const tempPath = `${finalPath}.tmp`;
+    await writeFile(tempPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
+    await rename(tempPath, finalPath);
+    return { run_id: artifact.run_id, artifact_path: artifactPath, codex, comparison: artifact.comparison };
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
   }
 }
 
