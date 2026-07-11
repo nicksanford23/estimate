@@ -1,8 +1,10 @@
 # Project State
 
-## Current Goal
-Model 1: page classifier for plan sets (keep/discard for flooring takeoffs).
-Design: PLAN.md. Rules: CLAUDE.md. Then flywheel; later room-boundary moonshot.
+## Current Goal (updated 2026-07-11)
+V2 era: build the estimator product on the V2 constitution (SCHEMA_V2.md)
+— pilot the 10 buildings, ML architecture roadmap, demo vs Togal.
+Rules: CLAUDE.md. Superseded design docs live in docs/legacy/ (PLAN.md =
+Model-1 design, PRODUCT_UX_V1.md = pre-V2 screens, etc.).
 
 ## Verified Facts (2026-07-04 evening)
 - DATABASE IS NOW NEON POSTGRES, schema `estimate.*`, via scripts/db.sh.

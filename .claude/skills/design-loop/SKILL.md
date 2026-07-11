@@ -15,13 +15,25 @@ against the rules before Nick ever sees them → founder clicks → react →
 next round. Never skip the driver-review step: agents violate the rules
 innocently (three violations shipped in the first build).
 
-STATUS 2026-07-10: v0.5 prototype BUILT in web/ (Next.js): /demo index,
-/review/[permit] for 14-11290-NEWC, 26-10321-RNVN, 24-06748-RNVS; data in
-web/public/demo/*.json+png (schema mirrors future DB: project/pages/rooms/
-evidence). Screenshots: data/ux_proto/. Spec: PRODUCT_UX_V1.md (three
-screens; only Screen 2 is built; Screens 1 and 3 have NO mockups yet).
-Nick ordered the loop PAUSED after the in-flight fix pass — do not run
-more rounds until he restarts it.
+STATUS 2026-07-11 (V2 era): the loop ran full-cycle and produced FOUR
+APPROVED screens (design_specs/{page_review,geometry_review,
+rooms_finishes,work_queue}_APPROVED.png) + SCHEMA_V2 §14 build notes.
+Slice-1 thin Page Review is live at /v2. docs/legacy/PRODUCT_UX_V1.md
+screens are SUPERSEDED by the approved images (its 5 trade questions
+remain open).
+The loop is governed by the consultation-loop and spec-driven-dev
+skills. v0.5 /demo + /review/[permit] prototypes remain as legacy.
+
+## THE IMAGE-INTERROGATION STEP (added 2026-07-11; proved itself on V2)
+Before ANY mockup set is approved, the driver interrogates each image
+with Nick, element by element: what is this element, what data feeds it,
+what happens on click, what state is it in when machine-only vs
+confirmed. Every answer that changes schema or process goes into the
+clarifications log (V2_CLARIFICATIONS.md) and folds into SCHEMA_V2 at
+checkpoints. This step caught keep-policy versioning, the chip color
+law, per-page viewports, and area-table-on-every-page — questions a
+build agent would have silently guessed at. No approval without
+interrogation.
 
 ## LOCKED DESIGN RULES (violations get sent back, no debate)
 1. Color = STATUS in review mode (green accepted-eligible / yellow

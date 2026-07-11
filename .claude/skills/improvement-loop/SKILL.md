@@ -5,6 +5,17 @@ description: The standing machine — data funnel, fix-grade loop, engine ladder
 
 # The improvement loop (the machine that makes the product better)
 
+> V2 NOTE (2026-07-11): SCHEMA_V2.md now governs identities, claims,
+> decisions, datasets; this skill's funnel/fix-grade/gates content still
+> stands. A full V2 rewrite is DEFERRED until after the ML-architecture
+> session (its outputs — model portfolio, per-model gates — are the new
+> content). orchestrate-pipeline is deprecated into here: its surviving
+> rules — Sonnet workers/Opus judgment/scripts-for-mechanical routing,
+> twin builds for important specs, throttle-by-asking, keep-list changes
+> as versioned keep_policy edits (SCHEMA_V2 §14), agent labels are
+> machine_observations never human_decisions — are already reflected in
+> §6 and SCHEMA_V2.
+
 One question rules everything: **what fraction of real buildings can we take
 off automatically, and how accurately?** Every work item must either raise
 that number or measure it more honestly. If a proposed task does neither,
@@ -147,6 +158,24 @@ honesty bar in the prompt. Scripts/pods: everything mechanical. If the big
 model is doing bulk work, the orchestration is wrong. Workers that go
 quiet get checked (output files, not promises); fresh narrow-mission agent
 beats a tired 150k-token one for rescue jobs.
+
+## 6b. Labeling waves (folded from orchestrate-pipeline, 2026-07-11)
+
+When Model-1 page labeling resumes: assignment files of ≤80 page ids per
+worker run (hard cap — context rot past that), built by SQL (rendered ∩
+unlabeled), ordered by PROJECT VALUE per Nick's 2026-07-05 priority:
+GOLD BAND first (permits with 10-80 rendered pages = product-matched
+tenant build-outs), boost on tenant/build-out/interior/renovation/
+restaurant/retail/suite descriptions or finish vocab in text; 1-9-page
+permits allowed when keep-dense but never as eval packets; >150-page
+mammoths deferred, train-side only. SIBLING RULE: a permit with floor
+plans but zero finish pages → check its other docs for interior|finish|ID
+filenames, queue that single doc. One page-labeler agent per file;
+reviewers ride behind on confidence<0.8 ∪ flagged ∪ 10% audit;
+adjudicator (Opus) only on category disagreements. Labels append-only in
+Neon; under V2 they import as machine_observations, never
+human_decisions. Keep-list changes are versioned keep_policy edits
+(SCHEMA_V2 §14), never relabeling.
 
 ## 7. Where everything lives
 
