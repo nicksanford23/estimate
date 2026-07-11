@@ -7,6 +7,40 @@ final-lock); once LOCKED, GPT produces mockup images for the unmocked
 screens, and a Claude driver builds per design-loop + spec-driven-dev
 skills. Codex is available as an execution driver for well-specced builds.*
 
+## FOR THE REVIEWING MODEL (GPT/Codex) — read this first
+
+You are the outside reviewer in this project's consultation loop. This
+file is the position doc. Before responding, READ (in this order):
+
+1. `CLAUDE.md` — standing rules and data layers.
+2. `STATE.md` — project history; at minimum the sections from
+   "Rung-2c results" onward, especially "PROBE 30 / 30b" (current model
+   honest state) and "CATCH-UP: the V2 design sprint".
+3. `SCHEMA_V2.md` — the locked V2 constitution (identities, append-only
+   decisions, datasets). The roadmap must not contradict it.
+4. `togal_teardown/TEARDOWN_DECISIONS.md` — competitor conclusions this
+   roadmap absorbed (deeper: CLAUDE_INDEPENDENT_ANALYSIS.md,
+   GPT_ANALYSIS.md).
+5. `.claude/skills/improvement-loop/SKILL.md` — the standing machine,
+   gates, honesty rules. Also `.claude/skills/design-loop/SKILL.md`
+   (locked UI rules) and `V2_CLARIFICATIONS.md` items 11–14.
+6. Skim `experiments/probe30b_dataset_audit.md` and
+   `experiments/probe30_wall_model_v2.md` — the evidence behind
+   station 3's "architecture must change" claim.
+7. `design_specs/*_APPROVED.png` — the four approved screens (images).
+
+**How to respond — write your response as a NEW file,
+`ML_ROADMAP_REVIEW_R1.md`, do not edit this one.** Structure it as:
+(a) CLARIFYING QUESTIONS — anything ambiguous or under-specified;
+(b) SUGGESTIONS — additions/changes, each with the reason and what it
+costs; (c) STRONG AGREEMENTS — where you'd defend this plan as-is;
+(d) STRONG DISAGREEMENTS — where you think this is wrong, with your
+counter-proposal and the evidence or reasoning; (e) ANSWERS to §6's six
+questions; (f) anything else worth discussing. Judge components on
+merits — do not defer to this doc's authority or soften disagreements.
+Numbered points throughout so the reply round can reference them.
+Founder (Nick) arbitrates disagreements; rounds continue until locked.
+
 ## 0. STATUS OF TRUTH (read first)
 
 **Founder verification debt: Nick has not personally verified ANY model
