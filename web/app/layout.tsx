@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
+import GlobalNav from "@/components/GlobalNav";
 
 const sans = Public_Sans({
   subsets: ["latin"],
@@ -27,24 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
-        <nav className="nav">
-          <div className="container nav-in">
-            <Link href="/" className="brand">
-              <span className="dot" />
-              PLAN&nbsp;SETS
-            </Link>
-            <Link href="/permits" className="link" style={{ opacity: 0.6 }}>
-              Legacy
-            </Link>
-            <Link href="/ops" className="link">
-              Ops
-            </Link>
-            <span className="spacer" />
-            <span className="link mono" style={{ fontSize: 12 }}>
-              NOLA · commercial
-            </span>
-          </div>
-        </nav>
+        <GlobalNav />
         {children}
       </body>
     </html>

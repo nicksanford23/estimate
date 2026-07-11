@@ -161,18 +161,19 @@ COVER_RE = re.compile(r"COVER\s+SHEET|TITLE\s+SHEET|DRAWING\s+(INDEX|LIST)|SHEET
 SHEETNUM_LINE_RE = re.compile(r"^\s*[A-Z]{1,3}-?\d[\d.\-]*\s*$")
 
 
-def classify(text_upper, tail_upper):
+def classify(text_upper, tail_upper, page_index):
     # 1. title-block region (last ~15 lines) — the sheet's own title lives here
     for rx, cat in RULES:
         m = rx.search(tail_upper)
         if m:
             return cat, m.group(0).strip()[:80], "title_block"
     # 2. cover/index trap: a sheet index lists EVERY title, so before any
-    #    full-page keyword match, detect index pages (explicit words or a
-    #    dense run of bare sheet-number lines) and call them cover_index.
-    if COVER_RE.search(text_upper) or sum(
+    #    full-page keyword match, detect index pages: explicit cover words
+    #    anywhere, or (page 0 only — detail callouts fake the pattern on
+    #    drawing pages) a dense run of bare sheet-number lines.
+    if COVER_RE.search(text_upper) or (page_index == 0 and sum(
         1 for l in text_upper.splitlines() if SHEETNUM_LINE_RE.match(l)
-    ) >= 10:
+    ) >= 10):
         return "cover_index", "sheet index density / cover words", "full_page"
     # 3. whole-page fallback
     for rx, cat in RULES:
@@ -298,11 +299,21 @@ def main():
                 continue
             text = f.read_text(errors="ignore")
             lines = text.splitlines()
-            tail = "\n".join([l for l in lines if l.strip()][-15:])
+            # Title block is the LAST text a plotter writes — except on
+            # city-stamped (RCC) sets, where the Safety & Permits stamp is
+            # appended after it on every page. Strip the stamp, then window.
+            body = [l for l in lines if l.strip()]
+            for marker in ("DEPARTMENT OF SAFETY AND PERMITS", "PLAN REVIEW DIVISION",
+                           "FINAL PERMIT RELEASE", "REVIEWED FOR CODE"):
+                for j, l in enumerate(body):
+                    if marker in l.upper():
+                        body = body[:j]
+                        break
+            tail = "\n".join(body[-30:])
             tu, xu = tail.upper(), text.upper()
 
             if pid not in existing["page_category"]:
-                cat, ev, region = classify(xu, tu)
+                cat, ev, region = classify(xu, tu, i)
                 obs.append((pid, "page_category",
                             json.dumps({"category": cat, "evidence": ev, "region": region})))
                 counts["obs_category"] += 1
