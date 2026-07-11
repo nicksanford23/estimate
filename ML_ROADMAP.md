@@ -1,4 +1,4 @@
-# ML Roadmap & Demo Screen Map — v1.1 (R1 verdicts appended; body amended by §7)
+# ML Roadmap & Demo Screen Map — v1.2 (R1+R2 verdicts appended; body amended by §7–§9)
 
 *Fable, 2026-07-11 (final Fable window). Purpose: the successor-proof ML
 plan + the screen inventory for the demo. Process: Nick runs this through
@@ -345,3 +345,56 @@ confirm/contest these verdicts, then draft the LOCK version structure
 register, screen inventory from your E1 table). Terse numbered deltas
 only; end with LOCKED / STILL OPEN lists per the consultation-loop
 skill.
+
+## 9. ROUND-2 VERDICTS (Claude, 2026-07-11)
+
+**ADOPTED, load-bearing:** R2's foundational correction. Machine-graded
+metrics against machine-made answer keys measure internal agreement,
+not accuracy — trusted-semantic-label count is ZERO until fresh binding
+human decisions exist. Trust ledger, terminology corrections ("80
+machine-screened weak-label candidates", "4 candidate area keys"),
+eligibility freeze (deny-by-default for legacy in every non-diagnostic
+snapshot), restart protocol §3 in full (label book, TRUE BLIND mode on
+the three review screens, 2/4/4 pilot split, complete-unit labeling,
+legacy-source qualification AFTER human truth, no bulk conversion,
+measure-the-human, burned-test rule), gate ladder P0–P5, revised build
+order §6, screen deltas §7, risk register §8, lock structure §9.
+Probe 31 is NOT the next gate; `verified_bootstrap_v1` is.
+
+**ADOPTED:** reopening R1-D2 — architecture selection returns to OPEN.
+Correct: the flat learning curve was measured against untrusted labels;
+it survives as hypothesis-generating diagnostics only.
+
+**MODIFIED (guarding against over-correction — the pendulum must not
+stall a solo founder):**
+1. Keep the restart LEAN: label book starts as one page per claim type
+   (versioned, grows by superseding decisions — buildings 1–2 exist to
+   calibrate it); blind mode is a UI state on existing screens, not a
+   rebuild; smallest-viable version of every §3 artifact first.
+2. The 4 candidate area keys are CHEAP, HIGH-PRIORITY audits (~239 rows
+   total, printed-total cross-check already passed): Nick audits them
+   early in the bootstrap — hours, likely promoting them — rather than
+   treating them as generic untrusted backlog.
+3. Second independent estimator/architect review of the sealed set:
+   aspirational (Nick has no staff today); delayed self-relabel is the
+   floor, independent review the upgrade when available.
+
+**REJECTED: none.**
+
+**FOUNDER DECISIONS (R2 STILL OPEN, Nick to ratify):**
+1. Pilot split 2 calibration / 4 development / 4 sealed — approve?
+2. Sealed-set second review: delayed self-relabel only, or +independent
+   reviewer at 10% when available?
+3. Legacy label sources: audit-for-salvage after bootstrap (R2's and my
+   recommendation) or all-fresh?
+4. One fully traced geometry region per pilot building — commit?
+5. First bounded external claim = area-schedule workflow, all outputs
+   human-confirmed, no geometry-automation claim — approve?
+6. (Carried from R1) buildingId route migration; post-bootstrap ~15–20
+   min/session audit tax.
+
+**R3 instruction:** write the LOCK DOCUMENT itself (new file
+ML_ROADMAP_LOCKED_V1.md) per R2 §9's structure, incorporating §7–§9
+verdicts and Nick's ratifications above. Where a founder decision is
+still pending, mark the section PENDING-FOUNDER rather than choosing.
+End with LOCKED / STILL OPEN.
