@@ -35,7 +35,9 @@ export default function V2PageCard({ page }: { page: V2PageRow }) {
     }
   }
 
-  const thumbSrc = page.legacy_doc_id ? `/api/thumb/${page.legacy_doc_id}/${page.pdf_page_index}` : null;
+  // opspage is keyed by the onestop doc id and renders on demand from R2, so
+  // every backfilled doc gets a thumbnail (legacy /api/thumb knew one doc).
+  const thumbSrc = `/api/opspage/${page.onestop_doc_id}/${page.pdf_page_index}?w=280`;
   const chipConfirmed = Boolean(binding);
   const chipLabel = binding ?? page.claimed_category ?? "unlabeled";
 
