@@ -404,3 +404,46 @@ table.ops-table td.wrap { white-space: normal; }
 .label-btn:disabled { opacity: 0.6; }
 .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
 .legend-item kbd { font-family: var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-right: 3px; }
+
+/* ---- v2 Page Review board (design_specs/page_review_APPROVED.png) ---- */
+.v2board { display: flex; gap: 24px; max-width: 1400px; margin: 0 auto; padding: 0 18px 60px; align-items: flex-start; }
+.v2board-main { flex: 1; min-width: 0; }
+.v2panel { position: sticky; top: 18px; width: 340px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-height: calc(100vh - 36px); overflow-y: auto; }
+.v2panel-img { background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.v2panel-img img { width: 100%; display: block; }
+.v2panel-body { padding: 14px 16px 18px; }
+.v2panel-catgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.v2panel-flags { display: flex; flex-direction: column; gap: 8px; }
+.v2flag { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.v2toggle { width: 30px; height: 17px; border-radius: 10px; background: var(--line); position: relative; display: inline-block; flex-shrink: 0; transition: background 0.12s; }
+.v2toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: left 0.12s; }
+.v2toggle-on { background: var(--good); }
+.v2toggle-on::after { left: 15px; }
+.v2keepline { margin-top: 12px; font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+.v2micro { margin-top: 10px; font-size: 11px; color: var(--muted); font-style: italic; }
+
+.v2doc { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-top: 16px; overflow: hidden; }
+.v2doc-summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 600; background: var(--surface-2); }
+.v2doc-summary::-webkit-details-marker { display: none; }
+.v2doc[open] .v2doc-summary { border-bottom: 1px solid var(--line); }
+
+.v2grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 14px; }
+.v2card { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0; cursor: pointer; display: flex; flex-direction: column; overflow: hidden; transition: border-color 0.12s; }
+.v2card:hover { border-color: var(--accent); }
+.v2card-selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.v2card-thumbwrap { position: relative; background: var(--surface-2); }
+.v2card-thumb { width: 100%; aspect-ratio: 17 / 22; object-fit: cover; object-position: top; display: block; }
+.v2card-status { position: absolute; top: 6px; right: 6px; font-family: var(--font-mono); font-size: 9.5px; padding: 2px 6px; border-radius: 5px; background: rgba(20,24,29,0.75); color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+.v2card-status-confirmed { background: color-mix(in srgb, var(--good) 80%, black); }
+.v2card-status-suggested { background: color-mix(in srgb, var(--warn) 80%, black); }
+.v2card-cap { font-family: var(--font-mono); font-size: 12px; padding: 8px 9px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2card-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 9px 9px; }
+
+.v2progress { margin-top: 20px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.v2progress-bar { height: 4px; border-radius: 2px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.v2progress-fill { height: 100%; background: var(--good); }
+
+@media (max-width: 900px) {
+  .v2board { flex-direction: column; }
+  .v2panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; border-radius: 14px 14px 0 0; max-height: 80vh; z-index: 50; }
+}

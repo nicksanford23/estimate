@@ -41,6 +41,7 @@ export type V2PageRow = {
   claimed_source: string | null;
   binding_category: string | null;
   binding_decision_id: number | null;
+  flags: string[];
 };
 
 export async function getBuildingDetail(permit: string) {
@@ -59,8 +60,8 @@ export async function getBuildingDetail(permit: string) {
   );
   const building = buildingRows[0] ?? null;
 
-  const docs = await q<{ document_id: number; onestop_doc_id: string; filename: string | null }>(
-    `SELECT id AS document_id, onestop_doc_id::text AS onestop_doc_id, filename
+  const docs = await q<{ document_id: number; onestop_doc_id: string; filename: string | null; filed_date: string | null }>(
+    `SELECT id AS document_id, onestop_doc_id::text AS onestop_doc_id, filename, filed_date::text AS filed_date
      FROM v2.document WHERE permit_id = $1 ORDER BY id`,
     [permitRow.id]
   );
@@ -107,6 +108,27 @@ export async function getBuildingDetail(permit: string) {
         [pageIds]
       )
     : [];
+  // Flags are toggled from the page-review side panel and stored the same
+  // way as page_category (append-only human_decision, binding=TRUE, no
+  // supersession bookkeeping needed since we only ever read the latest
+  // per-page flag set). Legacy eyeball_verdicts-imported page_flags rows use
+  // a different value_json shape ({verdict, is_floor_plan, ...}) and are
+  // simply skipped here since they carry no `flags` array.
+  const flagDecisions = pageIds.length
+    ? await q<{ target_id: number; value_json: { flags?: string[] }; decided_at: string }>(
+        `SELECT target_id, value_json, decided_at::text FROM v2.human_decision
+         WHERE target_type = 'page' AND claim = 'page_flags' AND target_id = ANY($1)
+         ORDER BY decided_at DESC`,
+        [pageIds]
+      )
+    : [];
+  const flagsByPage = new Map<number, string[]>();
+  for (const d of flagDecisions) {
+    if (!flagsByPage.has(d.target_id) && Array.isArray(d.value_json?.flags)) {
+      flagsByPage.set(d.target_id, d.value_json.flags!);
+    }
+  }
+
   const supersededIds = pageIds.length
     ? new Set(
         (
@@ -159,9 +181,17 @@ export async function getBuildingDetail(permit: string) {
           claimed_source: claim?.source ?? null,
           binding_category: binding?.category ?? null,
           binding_decision_id: binding?.id ?? null,
+          flags: flagsByPage.get(p.page_id) ?? [],
         };
       });
-    return { document_id: d.document_id, onestop_doc_id: d.onestop_doc_id, filename: d.filename, legacy_doc_id: legacyDocId, pages: docPages };
+    return {
+      document_id: d.document_id,
+      onestop_doc_id: d.onestop_doc_id,
+      filename: d.filename,
+      filed_date: d.filed_date,
+      legacy_doc_id: legacyDocId,
+      pages: docPages,
+    };
   });
 
   return { permit: permitRow.permit_num, building, docs: docsWithPages };
