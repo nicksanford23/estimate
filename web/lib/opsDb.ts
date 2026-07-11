@@ -69,6 +69,7 @@ export type ProcessedDocRow = {
   onestop_doc_id: string;
   filename: string | null;
   page_count: number | null;
+  downloaded_at: string | null;
 };
 
 // Docs actually downloaded/processed by the pipeline (estimate.document —
@@ -77,6 +78,7 @@ export type ProcessedDocRow = {
 export async function getProcessedDocuments(permit: string): Promise<ProcessedDocRow[]> {
   const rows = await q<ProcessedDocRow & { real_page_count: number }>(
     `SELECT d.id, d.onestop_doc_id::text AS onestop_doc_id, d.filename, d.page_count,
+            d.downloaded_at,
             COUNT(p.id)::int AS real_page_count
      FROM estimate.document d
      LEFT JOIN estimate.page p ON p.document_id = d.id
@@ -90,6 +92,7 @@ export async function getProcessedDocuments(permit: string): Promise<ProcessedDo
     onestop_doc_id: r.onestop_doc_id,
     filename: r.filename,
     page_count: r.real_page_count || r.page_count,
+    downloaded_at: r.downloaded_at,
   }));
 }
 

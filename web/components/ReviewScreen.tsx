@@ -427,14 +427,8 @@ function RvStyle() {
   --rv-blue: #2f6fd9; --rv-blue-bg: #e6edfc;
   --rv-red: #d13b3b; --rv-red-bg: #fbe7e7;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --rv-green: #4bc47f; --rv-green-bg: #113322;
-    --rv-amber: #e0b23d; --rv-amber-bg: #362a10;
-    --rv-blue: #6f9ce8; --rv-blue-bg: #142542;
-    --rv-red: #e46464; --rv-red-bg: #3a1414;
-  }
-}
+/* Light mode is the app default everywhere (founder call 2026-07-10) —
+   dark-via-OS-preference override removed. */
 
 .rv-shell { max-width: 1400px; margin: 0 auto; padding: 0 18px 60px; }
 .rv-header { padding: 18px 0 10px; }

@@ -33,8 +33,8 @@ export default function RootLayout({
               <span className="dot" />
               PLAN&nbsp;SETS
             </Link>
-            <Link href="/permits" className="link">
-              Permits
+            <Link href="/permits" className="link" style={{ opacity: 0.6 }}>
+              Legacy
             </Link>
             <Link href="/ops" className="link">
               Ops

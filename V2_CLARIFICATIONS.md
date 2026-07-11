@@ -44,3 +44,6 @@ they produced. Folded into SCHEMA_V2.md at checkpoints. Started 2026-07-10.*
   Summary tab — derive from confirmed labels.
 - Checkpoint rule: fold this log into SCHEMA_V2 after the Geometry Review
   image round, before slice-1 build starts.
+
+## CHECKPOINT 2026-07-11: items 1-10 + image rounds 2-4 folded into
+## SCHEMA_V2 §14 (v1.4). Log continues fresh from here for the pilot.

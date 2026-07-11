@@ -12,7 +12,7 @@ import {
   loadLabelProposals,
   type OverlayImage,
 } from "@/lib/opsData";
-import { getDocMeta, type DocMeta } from "@/lib/opsPages";
+import { getDocMeta } from "@/lib/opsPages";
 import {
   getPermitRecord,
   getDocumentsInventory,
@@ -23,8 +23,8 @@ import {
 import { getPermitDisplayName } from "@/lib/opsNames";
 import { r2Set } from "@/lib/r2";
 import OrigOverlayPair from "@/components/OrigOverlayPair";
-import DocStrip from "@/components/DocStrip";
 import PermitWorkbenchTabs from "@/components/PermitWorkbenchTabs";
+import DocumentsTab, { type DocumentsTabRow } from "@/components/DocumentsTab";
 import type { PagesTabDoc } from "@/components/PagesTab";
 import { DEMO_PERMITS } from "@/lib/demoTypes";
 import { GUIDES } from "@/lib/guides";
@@ -45,17 +45,6 @@ function overlayDocPage(
   return { doc_id: null, page: null };
 }
 
-// Simple filename/name -> badge classifier. Not exhaustive — a handful of
-// common patterns is enough for the Documents tab; misses just show no badge.
-function docTypeBadge(name: string | null): string | null {
-  const n = (name ?? "").toLowerCase();
-  if (/rev|addend/i.test(n)) return "revision";
-  if (/survey/i.test(n)) return "survey";
-  if (/permit|application|afidavit|affidavit|paperwork/i.test(n)) return "paperwork";
-  if (/arch|floor|a-\d/i.test(n)) return "arch set";
-  return null;
-}
-
 export default async function OpsPermitDetail({
   params,
 }: {
@@ -71,7 +60,16 @@ export default async function OpsPermitDetail({
   const clusters = loadClusters();
   const myCluster = clusters.find((c) => c.permit === permit) ?? null;
   const clusterMates = myCluster ? clusters.filter((c) => c.cluster_id === myCluster.cluster_id) : [];
-  const closeRows = loadCloseabilityFull().filter((r) => r.permit === permit);
+  const closeRowsAll = loadCloseabilityFull().filter((r) => r.permit === permit);
+  // CSV holds retries/duplicates per (doc,page) — keep one row each, preferring
+  // a successfully scored row (n_mid present) over crash rows.
+  const closeByPage = new Map<string, (typeof closeRowsAll)[number]>();
+  for (const r of closeRowsAll) {
+    const k = `${r.doc_id}-${r.page}`;
+    const prev = closeByPage.get(k);
+    if (!prev || (prev.n_mid == null && r.n_mid != null)) closeByPage.set(k, r);
+  }
+  const closeRows = Array.from(closeByPage.values());
   const layerRows = loadLayeredPlans().filter((r) => r.permit === permit);
   const rosterRow = loadTrainRoster().find((r) => r.permit === permit) ?? null;
   const overlays = findOverlaysForPermit(permit);
@@ -106,19 +104,6 @@ export default async function OpsPermitDetail({
     : rosterRow
       ? { doc_id: rosterRow.doc_id, page: rosterRow.page }
       : null;
-
-  const docOrder: string[] = [];
-  const pushDoc = (id: string | null | undefined) => {
-    if (id && /^\d+$/.test(id) && !docOrder.includes(id)) docOrder.push(id);
-  };
-  pushDoc(rosterRow?.doc_id);
-  for (const v of verdicts) pushDoc(v.doc_id);
-  for (const r of closeRows) pushDoc(r.doc_id);
-  for (const r of layerRows) pushDoc(r.doc_id);
-  for (const o of overlays) pushDoc(o.file.match(DOC_PAGE_RE)?.[1]);
-  const docMetas = (await Promise.all(docOrder.slice(0, 3).map((d) => getDocMeta(d)))).filter(
-    (m): m is DocMeta => m !== null
-  );
 
   // ---- checklist numbers (honest — "—" when unknown, never fabricated) ----
   const docsInventoried = docsInventory.length;
@@ -159,6 +144,17 @@ export default async function OpsPermitDetail({
     })
     .filter((d): d is PagesTabDoc => d !== null)
     .sort((a, b) => b.pageCount - a.pageCount);
+  // Dedupe by onestop_doc_id: estimate.document can have >1 row for the same
+  // NOLA doc (reprocessed etc). Keep the first (biggest, since already
+  // sorted) so PagesTab never gets a duplicate React key.
+  const seenDocIds = new Set<string>();
+  const dedupedPagesTabDocs = pagesTabDocs.filter((d) => {
+    if (seenDocIds.has(d.docId)) return false;
+    seenDocIds.add(d.docId);
+    return true;
+  });
+  pagesTabDocs.length = 0;
+  pagesTabDocs.push(...dedupedPagesTabDocs);
   // Suggestions file is keyed by page_index only (no doc_id) — attach it to
   // the largest/default-open doc, the plan-set doc it was generated against.
   if (hasProposals && pagesTabDocs.length) {
@@ -282,65 +278,15 @@ export default async function OpsPermitDetail({
     </>
   );
 
-  const documentsTab = (
-    <>
-      <div className="section-title">
-        Documents ({docsInventory.length}, {docsDownloaded} downloaded)
-      </div>
-      <div className="ops-table-wrap">
-        <table className="ops-table">
-          <thead>
-            <tr>
-              <th>Doc</th>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Pages</th>
-              <th>Downloaded</th>
-              <th>PDF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {docsInventory.map((d) => {
-              const downloaded = downloadedSet.has(d.doc_id);
-              const processed = processedDocs.find((p) => p.onestop_doc_id === d.doc_id);
-              const badge = docTypeBadge(d.name);
-              return (
-                <tr key={d.doc_id}>
-                  <td className="mono-num">{d.doc_id}</td>
-                  <td className="wrap">{d.name ?? <span className="dash">—</span>}</td>
-                  <td>{badge ? <span className="chip">{badge}</span> : <span className="dash">—</span>}</td>
-                  <td className="mono-num">{processed?.page_count ?? <span className="dash">—</span>}</td>
-                  <td>
-                    {downloaded ? (
-                      <span className="status-pill CONFIRMED">downloaded</span>
-                    ) : (
-                      <span className="chip disabled">not downloaded</span>
-                    )}
-                  </td>
-                  <td>
-                    {downloaded ? (
-                      <a href={`/api/pdf/${d.doc_id}`} target="_blank" rel="noreferrer" className="btn ghost">
-                        Open PDF ↗
-                      </a>
-                    ) : (
-                      <span className="dash">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {docsInventory.length === 0 && (
-              <tr>
-                <td colSpan={6} className="empty">
-                  No document inventory on file for this permit.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
+  const documentsRows: DocumentsTabRow[] = docsInventory.map((d) => {
+    const processed = processedDocs.find((p) => p.onestop_doc_id === d.doc_id);
+    return {
+      docId: d.doc_id,
+      name: d.name,
+      downloaded: downloadedSet.has(d.doc_id),
+      downloadedAt: processed?.downloaded_at ?? null,
+    };
+  });
 
   const historyTab = (
     <>
@@ -381,20 +327,7 @@ export default async function OpsPermitDetail({
         </>
       )}
 
-      {docMetas.length > 0 && (
-        <>
-          <div className="section-title">Full document{docMetas.length > 1 ? "s" : ""}</div>
-          {docMetas.map((m) => (
-            <DocStrip key={m.docId} docId={m.docId} pageCount={m.pageCount} titles={m.titles} name={m.name} />
-          ))}
-          <p className="hint">
-            Tap a page to view it full size. Page titles are read from the extracted page text where
-            available.
-          </p>
-        </>
-      )}
-
-      {overlays.length === 0 && verdicts.length === 0 && docMetas.length === 0 && (
+      {overlays.length === 0 && verdicts.length === 0 && (
         <p className="hint">No history recorded for this permit yet.</p>
       )}
     </>
@@ -442,21 +375,6 @@ export default async function OpsPermitDetail({
             {status?.status && <span className="chip">{status.status}</span>}
           </div>
         </div>
-        <div className="actions">
-          {hasDemo && (
-            <Link href={`/review/${encodeURIComponent(permit)}`} className="btn primary">
-              Open review screen
-            </Link>
-          )}
-          {hasGuide && (
-            <Link href={`/permits/${encodeURIComponent(permit)}/guide`} className="btn ghost">
-              Takeoff guide
-            </Link>
-          )}
-          <Link href={`/permits/${encodeURIComponent(permit)}`} className="btn ghost">
-            Model-1 doc browser
-          </Link>
-        </div>
       </div>
 
       {status?.note && (
@@ -468,7 +386,7 @@ export default async function OpsPermitDetail({
       <PermitWorkbenchTabs
         permit={permit}
         overview={overviewTab}
-        documents={documentsTab}
+        documents={<DocumentsTab permit={permit} rows={documentsRows} />}
         pagesDocs={pagesTabDocs}
         history={historyTab}
         takeoff={takeoffTab}

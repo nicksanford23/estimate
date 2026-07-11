@@ -183,7 +183,7 @@ export default function PagesTab({ permit, docs }: { permit: string; docs: Pages
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/opspage/${doc.docId}/${pi}?w=220`} alt={`Page ${pi + 1}`} loading="lazy" />
+                <img src={`/api/opspage/${doc.docId}/${pi}?w=420`} alt={`Page ${pi + 1}`} loading="lazy" />
                 <span className="thumb-cap">
                   p{pi + 1}
                   {doc.titles[pi] ? ` · ${doc.titles[pi]}` : ""}

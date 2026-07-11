@@ -30,27 +30,10 @@
   --font-sans: var(--font-public), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f151b;
-    --surface: #161e27;
-    --surface-2: #1b2530;
-    --ink: #e6ecf2;
-    --muted: #8695a5;
-    --line: #26323f;
-    --accent: #5f9bd4;
-    --accent-ink: #83b6e4;
-    --scraped: #7a8797;
-    --downloaded: #5f9bd4;
-    --rendered: #d6a84e;
-    --labeled: #54b98a;
-    --downloaded-bg: #14263a;
-    --rendered-bg: #2a2312;
-    --labeled-bg: #12281f;
-    --bad: #e2685f;
-    --bad-bg: #341715;
-  }
-}
+/* Light mode is the app default everywhere, always — founder call
+   2026-07-10. Dark-via-OS-preference override intentionally removed (not
+   just left unused): keep this comment if re-adding dark mode later, wire
+   it behind an explicit user toggle instead of prefers-color-scheme. */
 
 * { box-sizing: border-box; }
 html, body { padding: 0; margin: 0; }
@@ -400,11 +383,11 @@ table.ops-table td.wrap { white-space: normal; }
 .pages-tab details { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
 .pages-doc-summary { padding: 10px 14px; cursor: pointer; font-size: 13.5px; }
 .pages-doc-summary .pc { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; font-weight: 400; }
-.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 12px; }
-.thumb-card { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 0; cursor: pointer; display: flex; flex-direction: column; text-align: left; overflow: hidden; }
+.thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 14px; }
+.thumb-card { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 0; cursor: pointer; display: flex; flex-direction: column; text-align: left; overflow: hidden; }
 .thumb-card:hover { border-color: var(--accent); }
 .thumb-card img { width: 100%; aspect-ratio: 17 / 22; object-fit: cover; object-position: top; display: block; background: #fff; }
-.thumb-cap { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding: 5px 7px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thumb-cap { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding: 7px 9px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .label-chip { display: inline-block; margin: 3px 7px 6px; font-family: var(--font-mono); font-size: 10px; padding: 2px 7px; border-radius: 10px; }
 .label-chip.unlabeled { color: var(--muted); background: var(--surface-2); }
 .label-chip.keep { color: var(--good); background: var(--good-bg); }

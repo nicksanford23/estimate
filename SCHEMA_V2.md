@@ -1,4 +1,4 @@
-# V2 Schema & Process Constitution — v1.1 (GPT-approved pending 6 amendments, now incorporated)
+# V2 Schema & Process Constitution — v1.4 (locked for slice-1 build, 2026-07-11)
 
 *Founder + Claude + GPT, three consultation rounds, 2026-07-10. Locked
 principle: sources are immutable; extractions, regions, and geometry are
@@ -217,3 +217,46 @@ S1: identity spine (permit/building/plan_set/document/page/region/space)
 + backfill + THIN page review & region confirm. S2: Rooms & Finishes +
 semantic extraction queue. S3: Geometry Review + correction capture.
 S4: datasets/models views. Legacy stays read-only; nothing deleted.
+
+## 14. v1.4 — Image-loop checkpoint (2026-07-11, folded from V2_CLARIFICATIONS)
+UI/process decisions locked during the four-screen image interrogation:
+- TRUST STATES (everywhere): dashed = machine-claimed; grey solid +
+  evidence icon = machine CROSS-VERIFIED (e.g. scale vs printed dims,
+  totals vs printed total — tap shows evidence); colored solid =
+  human-confirmed. Only human-confirmed resolves as truth; cross-verified
+  is a reliable-but-promotable tier (Nick's "soft confirm").
+- Page Review: one collapsible section per relevant downloaded doc;
+  architect titles verbatim; full taxonomy in picker; no "hybrid" word —
+  show actual flags (max 2 + "+n"); status badges (geometry ✓ /
+  suggested / unlabeled) in card corner, never in label row. REGION
+  CONFIRMATION lives here: on floor-plan confirm, proposed viewport box
+  shown with Approve / Redraw / Use full page; geometry wrong_viewport
+  verdict bounces back here.
+- Geometry Review: canvas = REAL page render + overlays; issue cards
+  carry REAL crops at the room coords; verdict buttons are
+  CONTEXT-AWARE per issue type; "N auto-verified" requires an explicit
+  human bulk-accept action (Accept all / spot-check) — machine opinion
+  never self-resolves; region verdict must be set before run verdict
+  unlocks; issue-card click zooms canvas; run card carries an AI
+  RECOMMENDATION with plain-language reasons for the run verdict
+  (teaching mode verbose early). Correction tracing during pilot:
+  selected rooms only, founder traces (snap-to-vectors), Claude forensic
+  review on trigger conditions (§4).
+- Rooms & Finishes: source-table Notes column carried into extracted
+  rows; confirmed rows show their →space link; "Accept N clean rows"
+  bulk action; totals bar shows extracted vs printed with cross-verified
+  evidence.
+- Work Queue: lanes computed from blocking stage; every card deep-links
+  to the exact building tab + position; lane ORDER is founder-
+  configurable; blind-audit-due chips surface on cards.
+- Global nav locked: Work Queue · Buildings · Datasets · Models ·
+  Pipeline. Datasets/Models are simple traceability tables (snapshot →
+  ingredients → model → scores, links both directions); no images
+  needed, derive from established patterns.
+- Keep/display policies: keep_policy_v1 = {floor_plan, finish_plan,
+  finish_schedule, demo_plan} for training; product display_policy is
+  separate and versioned (one-line changes, never relabeling).
+- contains_area_table proposal runs on EVERY page regardless of category.
+- Mobile: full parity for confirm-flows (tap-sized); tracing corrections
+  desktop/tablet only. GPT designs desktop; mobile derived per
+  design-loop responsive rules.
