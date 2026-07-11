@@ -16,15 +16,16 @@ const KEEP_POLICY = new Set(["floor_plan", "finish_plan", "finish_schedule", "de
 
 // 8 flag toggles. Stored via claim='page_flags', value_json={flags:[...]}
 // on the same append-only /api/v2/decide route used for page_category.
+// Canonical 8 flags per SCHEMA_V2 §4 — do not invent alternates.
 const FLAGS = [
   { key: "contains_floor_plan", label: "contains floor plan" },
-  { key: "legend", label: "legend" },
-  { key: "area_table", label: "area table" },
+  { key: "contains_finish_schedule", label: "contains finish schedule" },
+  { key: "contains_legend", label: "contains legend" },
+  { key: "contains_area_table", label: "contains area table" },
   { key: "multiple_viewports", label: "multiple viewports" },
-  { key: "key_plan", label: "key plan" },
-  { key: "north_arrow", label: "north arrow" },
-  { key: "revision_cloud", label: "revision cloud" },
-  { key: "partial_plan", label: "partial plan" },
+  { key: "enlarged_plan", label: "enlarged plan" },
+  { key: "flooring_scope", label: "flooring scope" },
+  { key: "geometry_candidate", label: "geometry candidate" },
 ] as const;
 
 type DocGroup = {
