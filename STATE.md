@@ -640,3 +640,26 @@ and `python3 scripts/pipeline.py board`.
   reads Nick's transcript → independent analysis → THEN GPT
   cross-exchange → decisions. In parallel: ML architecture deep work
   (#5 + #5b demo-data sufficiency), then improvement-loop V2 rewrite.
+
+## ML roadmap consultation R1 (2026-07-11, Codex outside review)
+- Read the required V2 constitution/state, improvement/design-loop rules,
+  probe 30/30b evidence, Togal teardown, clarifications 11-14, and all four
+  approved screen images. Wrote `ML_ROADMAP_REVIEW_R1.md`; did not edit the
+  position doc or constitution.
+- Strong agreements: stationized cheapest-adequate-engine architecture,
+  schedule join as the wedge, heuristics for viewport, rented LLM for schedule
+  reading now, cluster-disjoint probe 31 after hygiene/rebaseline, and the
+  evidence/coverage/trust-state product direction.
+- Main R1 objections: schedule-only quantities must be limited to schedules
+  with a verified area source; scale and plan-set assembly are missing stages;
+  room semantics should be separated from boundary learning; the current
+  coverage buckets overlap; relative improvement over rules is not a demo ship
+  gate; LLM join output cannot become binding truth; `/b/[permit]` conflicts
+  with V2 building identity; raw perimeter is not bid-ready base LF.
+- R1 proposes planning-minimum data volumes per station, a sealed polygon-truth
+  set, research/shadow/demo/export gates, a two-axis coverage model, a complete
+  route inventory, and a sustainable founder protocol (100% on pilot buildings
+  1-2, then 5% stratified blind audit plus 100% risk triggers). These are open
+  consultation proposals, not locked decisions.
+- NEXT: driver/founder replies per numbered component, adopts/rejects/modifies,
+  and clarifies the bounded demo claim before any final-lock or mockup round.

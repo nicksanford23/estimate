@@ -1,4 +1,4 @@
-# ML Roadmap & Demo Screen Map — v1.0 draft for consultation
+# ML Roadmap & Demo Screen Map — v1.1 (R1 verdicts appended; body amended by §7)
 
 *Fable, 2026-07-11 (final Fable window). Purpose: the successor-proof ML
 plan + the screen inventory for the demo. Process: Nick runs this through
@@ -218,3 +218,91 @@ verification state).
 6. Verification protocol: cheapest founder-verification design that
    makes §0's debt shrink every session (blind-audit rate, which
    stages).
+
+## 7. ROUND-1 VERDICTS (Claude, 2026-07-11 — these deltas amend the body; R2 folds them in)
+
+Reviewer: Codex (ML_ROADMAP_REVIEW_R1.md). Per-component verdicts per the
+consultation loop. Honest headline: the review corrected four genuine
+overclaims in v1.0 (D1 schedule≠area, D4 zero-clicks wording, D7
+perimeter≠base, D8 "permanently"), and nearly everything else is adopted.
+
+**ADOPTED — all eight disagreements D1–D8:**
+- D1: the near-term path is the **area-schedule path**, gated on a
+  verified area source; non-area finish schedules yield material
+  assignment only, SF stays honestly unmeasured. (v1.0 overclaimed.)
+- D2: "architecture must change" downgraded to **leading hypothesis**,
+  tested only after the clean cluster-disjoint rebaseline.
+- D3: Station-3 gates are paired-improvement AND absolute thresholds on
+  a sealed benchmark; beating rules-v4 alone never ships.
+- D4: zero clicks = zero clicks **to a complete proposal**; binding
+  truth always requires the human decision. LLM output = candidate
+  ranking/explanation, never "adjudication" (word reserved for the
+  human decision graph, per F2).
+- D5: coverage = two orthogonal axes (quantity source × disposition),
+  disjoint buckets, displayed denominator with evidence.
+- D6: canonical routes are `/v2/b/[buildingId]`; permit URLs become
+  redirecting aliases. Slice-1 `[permit]` routes are logged route debt.
+- D7: geometry emits `gross_perimeter_lf` + opening lengths;
+  `net_base_lf` is a separately derived quantity with named scope rules.
+- D8: Station 4 = "do not train now; reconsider on measured triggers
+  (cost/latency/correction-rate over 3 snapshots)" — not "permanently."
+
+**ADOPTED — suggestions B1, B2, B4–B12, B14 and F1–F3:** Station 0
+(intake/identity/plan-set assembly — confirmation of the active plan set
+gates all joins); Station 2b (scale resolver/verifier, abstains on
+disagreement — v1.0's biggest omission, probe-30 history supports it);
+Station 3 split into 3a boundary / 3b space semantics (rules+LLM first,
+model only after corrections accumulate) / 3c derived quantities;
+four-gate ladder (research → shadow → bounded demo → bid/export);
+split_v1 demoted to historical regression set, new leakage-group +
+firm-cluster snapshot with sealed founder-audited test; field-level
+schedule metrics + constrained bipartite join with uniqueness rules;
+complete screen map incl. Pipeline, Source Files/plan-set, scale
+confirm, material setup, export (adopt reviewer's E1 route table as the
+inventory to lock); schedule/join track decoupled from probe 31;
+diversity-unit acquisition (clusters/format-families, never nominal
+rows); signed audit artifacts per gate; model contracts (schema,
+abstention states, idempotency, budgets) added to each station card;
+risk register with owners and stop conditions in the locked version.
+
+**MODIFIED (2):**
+- B3 (jobs-DAG refactor): adopt the contract-and-jobs target, but
+  SEQUENCE it — takeoff.py stays the research crank through probe 31;
+  the job-handler refactor lands with the pilot slices that need async.
+  Refactoring before the architecture experiment is premature.
+- B6 (sealed geometry truth set): adopt, phased — ~15–20 fully corrected
+  cluster-new regions unlock the BOUNDED-demo gate on narrow categories;
+  the full 40–60 before any market-facing claim. (Founder-time is the
+  scarce input; see decisions below.)
+
+**ADOPTED — answers E1–E6** as working positions: U-Net-first prior with
+both arms still run in probe 31; E3's volume table enters the doc as
+PLANNING PRIORS explicitly subordinate to measured learning curves (the
+numbers are priors, not gates); coverage page/region-first with building
+rollup as strict aggregation; the five schedule-break cases become the
+pilot's required mix; E6 becomes the verification protocol (blind-audit
+queue separate from production confirms; 100% consequential review on
+pilot buildings 1–2; then 5% stratified floor + 100%-trigger list;
+critical silent error resets the stage to 100%).
+
+**REJECTED: none.** (Recorded so R2 knows this was judged on merits, not
+deference: the review's positions survived because they cite this
+repo's own evidence — TRUTH_AREA tier, probe 30 scale failures, 30b
+leak/contamination — not because they came from outside.)
+
+**FOUNDER DECISIONS NEEDED (Nick — these are resource/priority calls,
+not technical disputes):**
+1. The sealed geometry truth set is YOUR correction time (~15–20 regions
+   near-term, 40–60 eventually). Commit to it phased, or narrow the
+   station-3 demo claim further?
+2. The verification tax: ~15–20 min per work session of stratified blind
+   audit after the 100%-review pilot buildings. Sustainable?
+3. Route rename to buildingId (small build task, do during next UI
+   slice): approve?
+
+**R2 instruction to the reviewer:** produce ML_ROADMAP_REVIEW_R2.md —
+confirm/contest these verdicts, then draft the LOCK version structure
+(final station cards incl. Stations 0 and 2b, gate ladder, risk
+register, screen inventory from your E1 table). Terse numbered deltas
+only; end with LOCKED / STILL OPEN lists per the consultation-loop
+skill.
