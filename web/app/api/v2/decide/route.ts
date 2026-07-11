@@ -10,14 +10,23 @@ import { TAXONOMY_V2 } from "@/lib/v2Taxonomy";
 const CATEGORIES = new Set<string>(TAXONOMY_V2);
 
 export async function POST(req: Request) {
-  let body: { page_id?: number; category?: string; claim?: string; value_json?: unknown; actor_id?: string; note?: string };
+  let body: {
+    page_id?: number;
+    target_id?: number;
+    target_type?: string;
+    category?: string;
+    claim?: string;
+    value_json?: unknown;
+    actor_id?: string;
+    note?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  const { page_id, category } = body;
+  const { category } = body;
   // Default claim stays 'page_category' for back-compat with the original
   // caller shape; page_flags (and any future claim) reuses the same
   // append-only insert + supersession-walk so the flags toggles in the
@@ -25,9 +34,18 @@ export async function POST(req: Request) {
   const claim = typeof body.claim === "string" && body.claim ? body.claim : "page_category";
   const actor_id = typeof body.actor_id === "string" && body.actor_id ? body.actor_id : "nick";
   const note = typeof body.note === "string" ? body.note : null;
+  // target_type/target_id generalize this route beyond 'page' (Rooms &
+  // Finishes posts schedule_row_confirm against schedule_row; Geometry
+  // Review posts room_verdict against polygon_prediction and
+  // region_geometry_verdict/run_verdict against region/geometry_run) — same
+  // append-only insert + supersession-walk, just a different target table.
+  // `page_id` stays the back-compat alias for target_type='page'.
+  const target_type = typeof body.target_type === "string" && body.target_type ? body.target_type : "page";
+  const page_id = body.page_id;
+  const target_id = target_type === "page" ? page_id : body.target_id;
 
-  if (typeof page_id !== "number" || !Number.isInteger(page_id) || page_id <= 0) {
-    return NextResponse.json({ error: "page_id must be a positive integer" }, { status: 400 });
+  if (typeof target_id !== "number" || !Number.isInteger(target_id) || target_id <= 0) {
+    return NextResponse.json({ error: "target_id (or page_id) must be a positive integer" }, { status: 400 });
   }
 
   let valueJson: unknown;
@@ -43,9 +61,21 @@ export async function POST(req: Request) {
     valueJson = body.value_json;
   }
 
-  const pageRows = await q<{ id: number }>(`SELECT id FROM v2.page WHERE id = $1`, [page_id]);
-  if (!pageRows[0]) {
-    return NextResponse.json({ error: "no v2.page row for that page_id" }, { status: 404 });
+  const tableByType: Record<string, string> = {
+    page: "v2.page",
+    schedule_row: "v2.schedule_row",
+    polygon_prediction: "v2.polygon_prediction",
+    region: "v2.region",
+    geometry_run: "v2.geometry_run",
+    space: "v2.space",
+  };
+  const table = tableByType[target_type];
+  if (!table) {
+    return NextResponse.json({ error: `unsupported target_type '${target_type}'` }, { status: 400 });
+  }
+  const targetRows = await q<{ id: number }>(`SELECT id FROM ${table} WHERE id = $1`, [target_id]);
+  if (!targetRows[0]) {
+    return NextResponse.json({ error: `no ${table} row for that target_id` }, { status: 404 });
   }
 
   // Find any existing binding decision for the same target+claim that is not
@@ -53,22 +83,22 @@ export async function POST(req: Request) {
   // single "latest row" (append-only + explicit supersession, SCHEMA_V2.md §4).
   const priorRows = await q<{ id: number }>(
     `SELECT hd.id FROM v2.human_decision hd
-     WHERE hd.target_type = 'page' AND hd.target_id = $1 AND hd.claim = $2
+     WHERE hd.target_type = $1 AND hd.target_id = $2 AND hd.claim = $3
        AND hd.binding = TRUE
        AND NOT EXISTS (
          SELECT 1 FROM v2.decision_relation dr
          WHERE dr.relation = 'supersedes' AND dr.to_decision_id = hd.id
        )
      ORDER BY hd.decided_at DESC`,
-    [page_id, claim]
+    [target_type, target_id, claim]
   );
 
   const insertRows = await q<{ id: number }>(
     `INSERT INTO v2.human_decision
         (target_type, target_id, claim, value_json, actor_type, actor_id, binding, taxonomy_version, note)
-     VALUES ('page', $1, $2, $3::jsonb, 'human', $4, TRUE, 'v2.0', $5)
+     VALUES ($1, $2, $3, $4::jsonb, 'human', $5, TRUE, 'v2.0', $6)
      RETURNING id`,
-    [page_id, claim, JSON.stringify(valueJson), actor_id, note]
+    [target_type, target_id, claim, JSON.stringify(valueJson), actor_id, note]
   );
   const newDecisionId = insertRows[0].id;
 

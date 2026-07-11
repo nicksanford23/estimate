@@ -561,3 +561,80 @@ and `python3 scripts/pipeline.py board`.
   (3) only then feature/architecture work; new data only if cluster-NEW.
 - Writeup: experiments/probe30b_dataset_audit.md. No labels touched, no
   retrain, no commits.
+
+## CATCH-UP: the V2 design sprint, 2026-07-10 → 07-11 (written 07-11;
+## STATE.md discipline lapsed during the sprint — this reconciles from git)
+- **SCHEMA_V2.md = the V2 constitution, v1.4 LOCKED for slice-1 build.**
+  Founder + Claude + GPT consultation rounds (Nick carries context between
+  models). Core: permit ≠ building ≠ plan_set identity spine; sources
+  immutable; extraction versioned in 3 tiers (cheap/heavy/semantic);
+  machine output = machine_observation, human decisions APPEND-ONLY with an
+  explicit supersession/dispute/adjudication relation graph; spaces as
+  canonical logical rooms; leakage_groups + clustering_runs for split
+  safety; dataset snapshots pin everything; jobs queue. v1.1→v1.4 folded
+  GPT amendments + the image-loop checkpoint (§14: trust states, chip
+  color law, region confirm, bulk accepts, nav lock).
+- **Image-first design loop produced 4 APPROVED mockups**
+  (design_specs/{page_review,geometry_review,rooms_finishes,work_queue}
+  _APPROVED.png) — these images ARE the build spec (hard rule added to
+  design-loop skill after a build agent invented its own layout).
+  V2_CLARIFICATIONS.md = the interrogation Q&A log; items 1-10 + rounds
+  2-4 folded into §14 at checkpoint; log continues for the pilot.
+- **Slice 1 BUILT** (commit cd40d03 + follow-ups): estimate.* v2 schema
+  applied (35 new tables), backfill of 12,106 permits + pilot pages /
+  observations / reference decisions (binding=false), thin Page Review
+  live at /v2 (project-first index cards, /v2/b/[permit], /api/v2/decide
+  with supersession), V2ReviewBoard on the canonical 8 flags, GlobalNav
+  hidden on /v2. UNCOMMITTED WIP in tree: V2Tabs.tsx +
+  /api/v2/geomoverlay + edits to decide/V2ReviewBoard/v2Db — looks like a
+  geometry-overlay tab mid-flight; review before building on it.
+- Pre-V2 ops layer also landed 07-09/10: /ops Mission Control (funnel,
+  permit browser, check queue, model report card), Permit Workbench,
+  start_site.sh one-command site, overnight_downloader on a pod (drains
+  discovery into R2, %PDF-validated, exception-hardened).
+- **DISCOVERY CRAWL COMPLETE** (verified 07-11 by query): 9,216 distinct
+  permits / 85,538 docs in estimate.discovered_docs. Download-round gate
+  (>=500 new plan-like rows) is wide OPEN — overnight_downloader has been
+  draining it; check its R2 log snapshots for how far it got.
+- FABLE_FINAL_DAYS.md = the agenda for the remaining ~2 Fable days
+  (housekeeping, skills audit, Togal blind teardown, pilot, ML
+  architecture deep work + demo-data sufficiency analysis).
+
+## Housekeeping session (2026-07-11, Fable — this entry)
+- STATE.md catch-up written (above). Memory refreshed (V2 era, Nick's
+  working style, window status).
+- **Togal teardown STARTED (blind protocol):** 3 background agents
+  analyzing the 55 frames in togal_teardown/screenshots/; Nick supplies
+  the video transcript next; GPT's existing analysis stays unseen until
+  Claude's independent analysis exists. Outputs land in
+  togal_teardown/.
+- **Skills audit (the retirement manual):**
+  - improvement-loop: KEEP; V2 rewrite DEFERRED until after the ML
+    architecture session (its outputs — model portfolio, gates — are the
+    new content; rewriting twice is waste). Survivors of
+    orchestrate-pipeline folded in meanwhile.
+  - orchestrate-pipeline: DEPRECATED (banner added) — worker routing,
+    twin builds, budget rules folded into improvement-loop; labeling-wave
+    mechanics preserved there for reference; keep-list-change procedure
+    superseded by SCHEMA_V2 keep_policy versioning.
+  - design-loop: UPDATED — image-interrogation step + consultation-loop
+    pointer + V2 status (4 approved screens, slice 1 live).
+  - NEW skills: consultation-loop (the Nick-carries-context Claude↔GPT
+    process), spec-driven-dev (locked specs + explicit drift callouts),
+    teaching (explain-like-a-teacher standard for Nick).
+  - label-pages / review-labels / triage-permits / diagnose-model /
+    sf-extraction: KEEP as-is (still accurate for their layers). V2 note:
+    agent labels import as machine_observations, never human_decisions.
+- Doc status map (root .md files): CURRENT = CLAUDE.md, STATE.md,
+  SCHEMA_V2.md, V2_CLARIFICATIONS.md, FABLE_FINAL_DAYS.md,
+  ESTIMATING_ROADMAP.md. LEGACY (read-only history, superseded) =
+  PLAN.md + AGENT_PIPELINE.md + PROGRESS.md + RESULTS.md +
+  FINDINGS_LATEST.md (Model-1 era), OPS_UI_V1.md (superseded by
+  SCHEMA_V2 §10 workbench IA), PRODUCT_UX_V1.md (screens superseded by
+  design_specs/*_APPROVED.png; Nick's 5 trade questions in it are STILL
+  OPEN), SF_TRIAGE_PROCESS_*.md (adopted into triage-permits skill),
+  CLAUDE_TASK.md. PHILOSOPHY.md still applies as thinking rules.
+- NEXT (per FABLE_FINAL_DAYS): Togal agents report → Claude reviews +
+  reads Nick's transcript → independent analysis → THEN GPT
+  cross-exchange → decisions. In parallel: ML architecture deep work
+  (#5 + #5b demo-data sufficiency), then improvement-loop V2 rewrite.

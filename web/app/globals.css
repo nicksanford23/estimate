@@ -447,3 +447,49 @@ table.ops-table td.wrap { white-space: normal; }
   .v2board { flex-direction: column; }
   .v2panel { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; border-radius: 14px 14px 0 0; max-height: 80vh; z-index: 50; }
 }
+
+/* ---- V2 tab row (Pages | Rooms & Finishes | Geometry Review) ---- */
+.v2tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 10px 0 18px; }
+.v2tab { font-size: 13.5px; padding: 8px 12px; color: var(--muted); border-bottom: 2px solid transparent; }
+.v2tab:hover { color: var(--ink); }
+.v2tab-on { color: var(--accent-ink); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* ---- Rooms & Finishes (design_specs/rooms_finishes_APPROVED.png) ---- */
+.rf-left { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.rf-eyebrow { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 8px; }
+.rf-cropstrip { height: 140px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; background: var(--surface-2); position: relative; }
+.rf-cropstrip img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+.rf-pageimg { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.rf-pageimg img { width: 100%; display: block; }
+.rf-panel { width: 460px; }
+.rf-table { display: flex; flex-direction: column; gap: 4px; max-height: 55vh; overflow-y: auto; margin-top: 6px; }
+.rf-row { display: grid; grid-template-columns: 0.6fr 1.1fr 0.9fr 0.7fr 0.7fr 1.2fr 0.9fr; gap: 6px; padding: 7px 8px; font-size: 12px; align-items: center; text-align: left; border-radius: 6px; background: none; border: 1px solid transparent; }
+.rf-row-head { font-weight: 600; color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; }
+.rf-row-body { cursor: pointer; }
+.rf-row-machine { border: 1px dashed var(--line); }
+.rf-row-confirmed { border: 1px solid var(--good); background: var(--good-bg); }
+.rf-row-selected { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.rf-notes { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.rf-totals { margin-top: 12px; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ---- Geometry Review (design_specs/geometry_review_APPROVED.png) ---- */
+.grv-wrap { max-width: 1500px; margin: 0 auto; padding-bottom: 60px; }
+.grv-cols { display: grid; grid-template-columns: 260px 1fr 320px; gap: 16px; padding: 0 18px; align-items: start; }
+.grv-runcard, .grv-issues { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.grv-kv { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--surface-2); }
+.grv-btnrow { display: flex; flex-wrap: wrap; gap: 5px; }
+.grv-btnrow .btn { font-size: 11.5px; padding: 5px 8px; }
+.grv-danger.primary { background: var(--bad); border-color: var(--bad); }
+.grv-canvas { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 400px; display: flex; flex-direction: column; align-items: center; }
+.grv-togglepills { display: flex; gap: 6px; margin-bottom: 8px; align-self: flex-start; }
+.grv-canvas-img { max-width: 100%; border-radius: 6px; }
+.grv-issue { display: flex; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+.grv-issue-selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.grv-issue-thumbwrap { width: 64px; height: 64px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+.grv-issue-thumb { width: 100%; height: 100%; object-fit: cover; }
+.grv-issue-body { flex: 1; min-width: 0; }
+.grv-bulk { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+@media (max-width: 1100px) {
+  .grv-cols { grid-template-columns: 1fr; }
+}

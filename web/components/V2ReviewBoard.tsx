@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { TAXONOMY_V2 } from "@/lib/v2Taxonomy";
 import type { V2PageRow } from "@/lib/v2Db";
+import V2Tabs from "@/components/V2Tabs";
 
 // Page Review board — matches design_specs/page_review_APPROVED.png:
 // collapsible per-doc sections of page-card grids + a fixed right side
@@ -168,6 +169,7 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{permit}</span>
           </div>
         </div>
+        <V2Tabs permit={permit} active="pages" />
 
         {docs.map((doc) => {
           const confirmed = doc.pages.filter((p) => state.get(p.page_id)?.binding).length;
