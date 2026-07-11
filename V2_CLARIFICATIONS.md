@@ -47,3 +47,19 @@ they produced. Folded into SCHEMA_V2.md at checkpoints. Started 2026-07-10.*
 
 ## CHECKPOINT 2026-07-11: items 1-10 + image rounds 2-4 folded into
 ## SCHEMA_V2 §14 (v1.4). Log continues fresh from here for the pilot.
+
+## From the Togal teardown (2026-07-11, see togal_teardown/TEARDOWN_DECISIONS.md)
+11. PROPOSED for next checkpoint: extend space.kind (or a parallel
+    room_type claim) with a room-type taxonomy (corridor, unit, living,
+    bedroom, bathroom, closet, utility, stairs, elevator, shaft,
+    balcony, lobby) + exclusion-reason vocabulary ("excluded: shaft",
+    "not flooring scope", "duplicate", "bad closure") — exclusions are
+    explicit states, never deletions.
+12. PROPOSED: lightweight run/page rating claim (great|ok|poor) as a
+    machine-feedback observation, alongside (not replacing) structured
+    geometry_annotation corrections.
+13. DESIGN BACKLOG (needs mockup rounds before build — spec-driven-dev):
+    coverage reconciliation panel (assigned/excluded/review/unmeasured +
+    coverage %), class-level bulk select verbs, exclusion-with-reason UI.
+14. Geometry pipeline: emit perimeter LF per room polygon (wall-base
+    quantity); room-label text harvested per polygon.
