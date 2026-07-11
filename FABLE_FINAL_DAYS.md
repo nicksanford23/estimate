@@ -60,3 +60,14 @@ clarifications; amend SCHEMA_V2 as reality teaches.
 ## Standing notes
 - Nick's usage rhythm: 5h windows; plan heavy Fable work at window starts.
 - Nick runs effort low for routine loops, high for design/judgment turns.
+
+## 5b. Demo-data requirement analysis (added 2026-07-11)
+Scheduled Fable+GPT consultation: how many buildings/plans do we
+REALISTICALLY need per model for a market-credible demo vs Togal?
+- Togal trained on millions of generic plans pre-LLM-era; we have: free
+  CAD-layer labels, LLM-assisted labeling, ONE trade (flooring), and the
+  correction flywheel. Quantify how far "sharper, narrower" actually
+  goes vs raw scale — the learning-curve question, answered with
+  numbers per model (boundary, table-parser, page classifier, viewport).
+- Output: per-model data targets + acquisition path + honest "not
+  enough yet" flags (Nick's no-bias rule). Defines when demo is credible.
