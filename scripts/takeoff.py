@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fitz  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
-from shapely.geometry import Point  # noqa: E402
+from shapely.geometry import Point, box  # noqa: E402
 from shapely.ops import polygonize, unary_union  # noqa: E402
 
 from probe2_sf import (  # noqa: E402
@@ -526,52 +526,23 @@ def resolve_pages(permit, doc_arg=None, pages_arg=None):
 
     rows = labeled_floor_plan_pages(permit, doc_arg)
     if rows:
-        # group by doc, pick the doc with the most labeled floor_plan candidates
+        # Group by revision/document and use the document with the most labeled
+        # floor-plan pages. Crucially, return EVERY labeled primary page in
+        # that document. The old behavior ranked these pages by line richness
+        # and silently ran only one, which made a multi-level building look
+        # like a completed takeoff when it was only a page diagnostic.
         by_doc = defaultdict(list)
         for r in rows:
             by_doc[r["od"]].append(r)
         doc_id = max(by_doc, key=lambda k: len(by_doc[k]))
-        cands = by_doc[doc_id]
-        if len(cands) == 1:
-            best = cands[0]
-            return [dict(doc_id=doc_id, page_index=best["pi"], sheet_title=best["st"],
-                         resolution="only labeled floor_plan page")]
-        # multiple candidate pages for one doc (often multiple floors/tenants
-        # of the SAME building): pick the single richest one by wall-segment
-        # count -- this is exactly probe24_takeoff.py's own selection method
-        # ("pick the floor plan page with the most wall segs"), reproduced
-        # here as the default so `run` needs no page hint on permits like the
-        # bank / 26-10321. Known gap: on a genuinely multi-story permit this
-        # picks ONE floor; pass --pages to target other floors explicitly.
-        s3 = r2_client()
-        pdf = download_pdf(s3, doc_id)
-        try:
-            scored = []
-            for r in cands:
-                pi = r["pi"]
-                pg = fitz.open(pdf)[pi]
-                pw = pg.rect.width
-                n_layer, _ = wall_seg_count(pdf, pi, pw)
-                scored.append((n_layer, r))
-            scored.sort(key=lambda x: -x[0])
-            if scored[0][0] > 0:
-                best = scored[0][1]
-                return [dict(doc_id=doc_id, page_index=best["pi"], sheet_title=best["st"],
-                             resolution=f"most named-wall-layer segments ({scored[0][0]}) among "
-                                        f"{len(cands)} labeled floor_plan pages")]
-            # nobody has named wall layers -- rank by rules-path candidate count instead
-            rscored = []
-            for r in cands:
-                pi = r["pi"]
-                fpp, _ = find_scale(doc_id, pi)
-                rscored.append((rules_seg_count(pdf, pi, fpp), r))
-            rscored.sort(key=lambda x: -x[0])
-            best = rscored[0][1]
-            return [dict(doc_id=doc_id, page_index=best["pi"], sheet_title=best["st"],
-                         resolution=f"most rules-path wall candidates ({rscored[0][0]}) among "
-                                    f"{len(cands)} labeled floor_plan pages (no named layers)")]
-        finally:
-            os.remove(pdf)
+        cands = sorted(by_doc[doc_id], key=lambda r: r["pi"])
+        return [
+            dict(
+                doc_id=doc_id, page_index=r["pi"], sheet_title=r["st"],
+                resolution=f"all labeled floor_plan pages ({len(cands)} in selected document)",
+            )
+            for r in cands
+        ]
 
     # nothing labeled yet -- page_select.py fallback on the permit's primary doc
     doc_id = doc_arg or permit_primary_doc(permit)
@@ -974,9 +945,9 @@ def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index
     "loser-only rescue" or "engines disagree" flags) forces that polygon to
     geometry_review regardless of how many room labels it anchors -- never
     auto_quantity on an engine-disagreement or a rescue-only find. Leaving
-    both args None (the layer path's call, and any pre-dual rules call)
-    reproduces the exact prior room-dict shape byte-for-byte (no "engine"
-    key added at all)."""
+    both args None (the layer path's call, and any pre-dual rules call) keeps
+    engine provenance absent. All routes now include PDF bounds/centroids so
+    project diagnostics can audit viewport and leakage failures."""
     rooms = []
     open_groups = []
     n_artifact = len(poly_artifact)
@@ -985,6 +956,12 @@ def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index
             continue
         rn_list = poly_rooms.get(i, [])
         sqft = round(poly.area * fpp ** 2, 1) if fpp else None
+        minx, miny, maxx, maxy = poly.bounds
+        bbox_pdf = {
+            "x": round(minx, 2), "y": round(miny, 2),
+            "w": round(maxx - minx, 2), "h": round(maxy - miny, 2),
+        }
+        centroid_pdf = {"x": round(poly.centroid.x, 2), "y": round(poly.centroid.y, 2)}
         notes = poly_notes[i] if poly_notes else []
         forced_review = bool(notes)
         if len(rn_list) == 1 and not forced_review:
@@ -994,15 +971,19 @@ def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index
                 area_sf=sqft, product_action="auto_quantity",
                 material=material_for_room(truth, rn),
                 confidence="high" if sqft else "low",
-                flags=[],
+                flags=[], bbox_pdf=bbox_pdf, centroid_pdf=centroid_pdf,
             )
         elif len(rn_list) > 1 and not forced_review:
             gid = f"open_{i}"
-            open_groups.append(dict(group_id=gid, members=rn_list, area_sf=sqft, poly_index=i))
+            open_groups.append(dict(
+                group_id=gid, members=rn_list, area_sf=sqft, poly_index=i,
+                bbox_pdf=bbox_pdf, centroid_pdf=centroid_pdf,
+            ))
             room = dict(
                 poly_index=i, room=None, name=None, area_sf=sqft,
                 product_action="open_zone_split", material="mixed/TBD",
                 confidence="medium", flags=[f"open_group={gid}", f"members={','.join(rn_list)}"],
+                bbox_pdf=bbox_pdf, centroid_pdf=centroid_pdf,
             )
         else:
             rn = rn_list[0] if rn_list else None
@@ -1013,6 +994,7 @@ def build_rooms(polys, poly_rooms, poly_artifact, fpp, truth, doc_id, page_index
                 material=material_for_room(truth, rn) if rn else None,
                 confidence="very_low",
                 flags=list(notes) if notes else ["unlabeled_polygon"],
+                bbox_pdf=bbox_pdf, centroid_pdf=centroid_pdf,
             )
         if poly_engine is not None:
             room["engine"] = poly_engine[i]
@@ -1126,7 +1108,8 @@ def append_scoreboard(row):
 
 # ------------------------------------------------------------------------ run
 
-def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE):
+def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE,
+               viewport_by_page=None):
     run_dir = os.path.join(OUT_ROOT, permit)
     os.makedirs(run_dir, exist_ok=True)
     resolved = resolve_pages(permit, doc_arg, pages_arg)
@@ -1155,6 +1138,27 @@ def run_permit(permit, doc_arg=None, pages_arg=None, engine=DEFAULT_RULES_ENGINE
             flags.append(f"scale_source={scale_source}")
 
             polys, meta, pw, ph = route_and_extract(pdf, page_index, fpp, engine=engine, truth=truth)
+            viewport = (viewport_by_page or {}).get(page_index)
+            if viewport:
+                viewport_poly = box(
+                    viewport["x"], viewport["y"],
+                    viewport["x"] + viewport["w"], viewport["y"] + viewport["h"],
+                )
+                keep = [i for i, poly in enumerate(polys) if viewport_poly.covers(poly.centroid)]
+                pre_count = len(polys)
+                polys = [polys[i] for i in keep]
+                for key in ("poly_engine", "poly_notes"):
+                    if meta.get(key) is not None:
+                        meta[key] = [meta[key][i] for i in keep]
+                meta["viewport_filter"] = {
+                    "source": "project_packet",
+                    "bbox_pdf": viewport,
+                    "criterion": "polygon_centroid_inside_viewport",
+                    "n_polys_before": pre_count,
+                    "n_polys_after": len(polys),
+                    "n_polys_removed": pre_count - len(polys),
+                }
+                flags.append("viewport_filter=project_packet_machine_verified_pending_human")
             if len(polys) < 3:
                 # neither path produced enough to call a takeoff -- page-level
                 # 'redraw' verdict per the mission's product_action enum,

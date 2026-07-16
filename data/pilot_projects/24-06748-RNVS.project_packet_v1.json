@@ -1,0 +1,117 @@
+{
+  "schema_version": "project_packet_v1",
+  "permit": "24-06748-RNVS",
+  "project_role": "development",
+  "packet_status": "whole_project_diagnostic_complete_pending_human_confirmation",
+  "plan_set": {
+    "revision_label": "600 Baronne 6-28-24 Arch",
+    "onestop_doc_id": 7372349,
+    "filename": "600 Baronne_6-28-24_Arch.pdf",
+    "plan_set_confirmation": "pending"
+  },
+  "schedule_sources": [
+    {
+      "page_index": 4,
+      "sheet_number": "A100",
+      "sheet_title": "SCHEDULES AND DETAILS",
+      "region_role": "room_schedule",
+      "capability": "room_finish_area",
+      "room_count": 36,
+      "printed_total_sf": 5054,
+      "transcribed_total_sf": 5055,
+      "provenance": "agent_transcribed_reference",
+      "qualification": "legacy_unverified_diagnostic_only",
+      "region_confirmation": "pending"
+    }
+  ],
+  "primary_plan_views": [
+    {
+      "page_index": 5,
+      "sheet_number": "A101",
+      "sheet_title": "1ST FLOOR - FLOOR AND CEILING PLAN",
+      "level": "01 LEVEL",
+      "expected_room_count": 8,
+      "expected_area_sf": 1410,
+      "viewport_role": "proposed_floor_plan",
+      "viewport_bbox": {"x": 1961.24, "y": 86.4, "w": 674.18, "h": 1879.2, "units": "pdf_points"},
+      "viewport_confirmation": "machine_verified_pending_human"
+    },
+    {
+      "page_index": 6,
+      "sheet_number": "A102",
+      "sheet_title": "2ND FLOOR - FLOOR AND CEILING PLAN",
+      "level": "02 LEVEL",
+      "expected_room_count": 13,
+      "expected_area_sf": 1322,
+      "viewport_role": "proposed_floor_plan",
+      "viewport_bbox": {"x": 1961.24, "y": 86.4, "w": 674.18, "h": 1879.2, "units": "pdf_points"},
+      "viewport_confirmation": "machine_verified_pending_human"
+    },
+    {
+      "page_index": 7,
+      "sheet_number": "A103",
+      "sheet_title": "3RD FLOOR - FLOOR AND CEILING PLAN",
+      "level": "03 LEVEL",
+      "expected_room_count": 10,
+      "expected_area_sf": 1242,
+      "viewport_role": "proposed_floor_plan",
+      "viewport_bbox": {"x": 1961.24, "y": 86.4, "w": 674.18, "h": 1879.2, "units": "pdf_points"},
+      "viewport_confirmation": "machine_verified_pending_human"
+    },
+    {
+      "page_index": 8,
+      "sheet_number": "A104",
+      "sheet_title": "4TH AND 5TH FLOOR PLAN",
+      "level": "04 LEVEL",
+      "expected_room_count": 5,
+      "expected_area_sf": 1081,
+      "viewport_role": "proposed_floor_plan",
+      "viewport_bbox": {"x": 1961.24, "y": 86.4, "w": 674.18, "h": 1879.2, "units": "pdf_points"},
+      "viewport_confirmation": "machine_verified_pending_human"
+    }
+  ],
+  "supporting_views": [
+    {
+      "page_index": 10,
+      "sheet_number": "A201",
+      "sheet_title": "ENLARGED PLANS",
+      "supports_levels": ["02 LEVEL", "03 LEVEL"],
+      "quantity_role": "support_only_do_not_double_count"
+    }
+  ],
+  "completion_gates": {
+    "all_primary_viewports_confirmed": false,
+    "all_primary_viewports_have_geometry_outcome": true,
+    "canonical_levels_and_spaces_created": true,
+    "schedule_rows_linked_to_spaces": false,
+    "whole_project_report_generated": true,
+    "training_eligible": false,
+    "evaluation_eligible": false,
+    "demo_eligible": false
+  },
+  "current_baseline": {
+    "run_path": "data/project_runs/full_sheet_v4/24-06748-RNVS/run.json",
+    "processed_primary_pages": [5, 6, 7, 8],
+    "processed_primary_view_count": 4,
+    "required_primary_view_count": 4,
+    "status": "whole_project_diagnostic_complete_quality_failed",
+    "expected_room_count": 36,
+    "identified_schedule_room_count": 20,
+    "exact_rooms_within_10_percent": 2,
+    "missing_schedule_room_count": 16,
+    "unidentified_polygon_count": 18,
+    "report_path": "data/project_runs/full_sheet_v4/24-06748-RNVS/project_geometry_diagnostic.json"
+  },
+  "deterministic_fix_result": {
+    "change": "constrain polygon outputs to the proposed quantity viewport and retain polygon PDF bounds",
+    "run_path": "data/project_runs/viewport_v4/24-06748-RNVS/run.json",
+    "result": "no_metric_change",
+    "conclusion": "viewport selection is not the dominant residual failure class"
+  },
+  "engine_comparison": {
+    "v4": {"identified": 20, "exact_within_10_percent": 2, "missing": 16, "unidentified": 18},
+    "model": {"identified": 11, "exact_within_10_percent": 0, "missing": 25, "unidentified": 25},
+    "dual": {"identified": 21, "exact_within_10_percent": 2, "missing": 15, "unidentified": 15},
+    "decision": "keep_v4_default_dual_diagnostic_only_do_not_promote_existing_model"
+  }
+}

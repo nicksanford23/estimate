@@ -435,6 +435,12 @@ export type PolyOut = {
   material: string | null;
   verdict: string | null;
   verdict_decision_id: number | null;
+  // Grading against the finish-schedule answer key (the printed SF for this
+  // room). grade='match' = within tolerance (earned green); 'off' = measured
+  // but disagrees with the schedule; 'none' = no schedule row to check against.
+  answer_key_sf: number | null;
+  error_pct: number | null;
+  grade: "match" | "off" | "none";
 };
 
 export type GeometryRunOut = {
@@ -446,12 +452,17 @@ export type GeometryRunOut = {
   pdf_page_index: number | null;
   sheet_title: string | null;
   scale_text: string | null;
+  engine_label: string;
   overlay_path: string | null;
   summary: { n_auto?: number; n_review?: number; n_open?: number; total_sf?: number } | null;
   region_verdict: string | null;
   region_verdict_decision_id: number | null;
   run_verdict: string | null;
   run_verdict_decision_id: number | null;
+  schedule_reference_state: "none" | "legacy_unverified" | "eligible";
+  training_eligible: boolean;
+  evaluation_eligible: boolean;
+  demo_eligible: boolean;
   polys: PolyOut[];
 };
 
@@ -478,10 +489,13 @@ export async function getGeometryReview(permit: string): Promise<GeometryReviewD
     region_id: number;
     run_no: number;
     manifest_json: {
+      legacy?: boolean;
+      geometry_path?: string;
       sheet_title?: string;
       scale_text?: string;
       overlay_path?: string;
       summary?: { n_auto?: number; n_review?: number; n_open?: number; total_sf?: number };
+      routing_meta?: { path?: string; engine?: string; engine_version?: string };
       onestop_doc_id?: string;
       pdf_page_index?: number;
     };
@@ -505,6 +519,19 @@ export async function getGeometryReview(permit: string): Promise<GeometryReviewD
 
   const runIds = runRows.map((r) => r.run_id);
   const regionIds = [...new Set(runRows.map((r) => r.region_id))];
+
+  const eligibilityRows = await q<{ subject_id: number; purpose: string; eligible: boolean }>(
+    `SELECT subject_id, purpose, eligible
+     FROM v2.effective_evidence_eligibility
+     WHERE subject_type = 'geometry_run' AND subject_id = ANY($1)`,
+    [runIds]
+  );
+  const eligibilityByRun = new Map<number, Map<string, boolean>>();
+  for (const row of eligibilityRows) {
+    const purposes = eligibilityByRun.get(row.subject_id) ?? new Map<string, boolean>();
+    purposes.set(row.purpose, row.eligible);
+    eligibilityByRun.set(row.subject_id, purposes);
+  }
 
   const polyRows = await q<{
     id: number;
@@ -565,8 +592,49 @@ export async function getGeometryReview(permit: string): Promise<GeometryReviewD
     if (d.value_json?.verdict) runVerdictByRun.set(d.target_id, { verdict: d.value_json.verdict, decisionId: d.id });
   }
 
+  // Answer key: the finish-schedule's printed area per room (room# -> SF). We
+  // grade each measured polygon against this so "green" is EARNED (matches the
+  // schedule) rather than self-declared by the geometry engine.
+  const scheduleRows = await q<{ id: number; raw: Record<string, unknown>; sf_eval_eligible: boolean }>(
+    `SELECT sr.id, sr.raw_values_json AS raw,
+            COALESCE((
+              SELECT eee.eligible FROM v2.effective_evidence_eligibility eee
+              WHERE eee.subject_type = 'schedule_row' AND eee.subject_id = sr.id
+                AND eee.purpose = 'sf_eval'
+            ), FALSE) AS sf_eval_eligible
+     FROM v2.schedule_row sr
+     JOIN v2.region r ON r.id = sr.region_id JOIN v2.page pg ON pg.id = r.page_id
+     JOIN v2.document d ON d.id = pg.document_id
+     WHERE d.permit_id = $1 AND r.kind = 'schedule_table'`,
+    [permitRow.id]
+  );
+  const answerKeyByRoom = new Map<string, number>();
+  for (const sr of scheduleRows) {
+    const room = String(sr.raw?.room ?? sr.raw?.room_number ?? "").trim();
+    const area = Number(String(sr.raw?.area_sf ?? "").replace(/[^0-9.]/g, ""));
+    if (room && Number.isFinite(area) && area > 0) answerKeyByRoom.set(room, area);
+  }
+  const scheduleReferenceState: GeometryRunOut["schedule_reference_state"] =
+    scheduleRows.length === 0
+      ? "none"
+      : scheduleRows.every((row) => row.sf_eval_eligible)
+        ? "eligible"
+        : "legacy_unverified";
+  const GRADE_TOLERANCE = 0.1; // ±10% of the printed area counts as a match
+  function gradePoly(room: string | null, measured: number | null): Pick<PolyOut, "answer_key_sf" | "error_pct" | "grade"> {
+    const key = room ? answerKeyByRoom.get(room.trim()) : undefined;
+    if (key == null || measured == null) return { answer_key_sf: key ?? null, error_pct: null, grade: "none" };
+    const err = (measured - key) / key;
+    return { answer_key_sf: key, error_pct: Math.round(err * 1000) / 10, grade: Math.abs(err) <= GRADE_TOLERANCE ? "match" : "off" };
+  }
+
   const runs: GeometryRunOut[] = runRows.map((r) => {
     const onestop = r.manifest_json?.onestop_doc_id ?? null;
+    const routing = r.manifest_json?.routing_meta;
+    const engineLabel =
+      routing?.engine_version ?? routing?.engine ?? routing?.path ??
+      r.manifest_json?.geometry_path ?? (r.manifest_json?.legacy ? "legacy import" : "unknown");
+    const eligibility = eligibilityByRun.get(r.run_id);
     const polys = polyRows
       .filter((p) => p.run_id === r.run_id)
       .map((p) => {
@@ -582,6 +650,7 @@ export async function getGeometryReview(permit: string): Promise<GeometryReviewD
           material: p.flags?.material ?? null,
           verdict: v?.verdict ?? null,
           verdict_decision_id: v?.decisionId ?? null,
+          ...gradePoly(p.label_match, p.area_sf),
         };
       });
     const rv = regionVerdictByRegion.get(r.region_id);
@@ -595,12 +664,17 @@ export async function getGeometryReview(permit: string): Promise<GeometryReviewD
       pdf_page_index: r.manifest_json?.pdf_page_index ?? null,
       sheet_title: r.manifest_json?.sheet_title ?? null,
       scale_text: r.manifest_json?.scale_text ?? null,
+      engine_label: engineLabel,
       overlay_path: r.manifest_json?.overlay_path ?? null,
       summary: r.manifest_json?.summary ?? null,
       region_verdict: rv?.verdict ?? null,
       region_verdict_decision_id: rv?.decisionId ?? null,
       run_verdict: runv?.verdict ?? null,
       run_verdict_decision_id: runv?.decisionId ?? null,
+      schedule_reference_state: scheduleReferenceState,
+      training_eligible: eligibility?.get("boundary_train") === true,
+      evaluation_eligible: eligibility?.get("sf_eval") === true,
+      demo_eligible: eligibility?.get("demo") === true,
       polys,
     };
   });

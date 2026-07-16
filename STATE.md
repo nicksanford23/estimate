@@ -882,3 +882,142 @@ and `python3 scripts/pipeline.py board`.
   other card and later return. Removed the over-broad previous/next redesign.
 - Do not run the remaining 37 Building-A pages until Nick accepts this corrected
   smoke interaction and Opus scopes the asynchronous vendor queues.
+
+## Project-first execution lock (2026-07-14, founder directive)
+- Founder identified the page-first failure directly: a geometry run on one
+  convenient second-floor sheet is not a building result when the project has
+  schedules and primary plans for several levels. **The unit of ingestion,
+  review, geometry execution, and scoring is now the complete plan set for one
+  project.** Pages remain worker tasks only. No single-page success may be
+  promoted or described as project coverage.
+- Clarified the `truth_area` provenance: `24-06748-RNVS.json` was read and
+  transcribed row-by-row by Claude Opus, then visually checked. It is valuable
+  `agent_transcribed_reference`, not evidence that an automatic table parser
+  exists. It remains legacy-unverified / diagnostic-only until freshly
+  qualified, and future reusable extraction must preserve table/cell geometry,
+  raw text, normalized values, version, and source evidence.
+- Schedule capability split is binding for implementation: `room_finish`
+  (material but no area), `room_area` (printed area), and `room_finish_area`.
+  Do not discard material schedules because they lack area. `14-11290-NEWC`
+  is the material-join development case; geometry supplies area. `24-06748-RNVS`
+  is the combined area+finish development case and can diagnose geometry.
+- `24-06748-RNVS` is the first complete development project. Packet:
+  A100 schedule p4; required primary proposed-plan views A101 p5 / A102 p6 /
+  A103 p7 / A104 p8; A201 p10 is support-only and must not be double-counted.
+  Schedule expectations: L1 8 rooms/1,410 SF; L2 13/1,322; L3 10/1,242;
+  L4 5/1,081; 36 rows / 5,055 transcribed SF vs 5,054 printed.
+- Baseline at the moment of this directive was **INCOMPLETE**: only A102 p6 ran; 11 polygons,
+  5 numbered, 6 unidentified, 616.2 measured SF vs 1,322 scheduled Level-2
+  SF, and 0/5 numbered polygons within +/-10%. This is a useful geometry
+  failure packet, not training/eval/demo evidence. It is superseded by the
+  complete-project diagnostic recorded in the next section.
+- Added the locked process doc
+  `docs/pilot/PROJECT_FIRST_EXECUTION_V1.md`, machine-readable packet
+  `data/pilot_projects/24-06748-RNVS.project_packet_v1.json`, and fail-closed
+  guard `scripts/validate_project_packet.py`. Strict validation must fail until
+  every required primary view has a recorded geometry outcome.
+- Architecture direction: hybrid, cheapest adequate route per confirmed
+  viewport. Deterministic project assembly/viewport/scale/text/anchors first;
+  clean named-layer geometry when available; ML segment semantics for flattened
+  vectors; raster segmentation for scans; finish-boundary extraction separate
+  from walls. Deterministic code retains polygonization, transforms, arithmetic,
+  provenance, and confidence gates.
+- Immediate sequence: confirm the four proposed-plan viewports -> create levels
+  and canonical spaces from all 36 schedule rows -> link schedule/plan anchors
+  -> baseline the unchanged engine on all four levels -> classify every failure
+  -> fix deterministic residuals -> use ML only for measured ambiguous-boundary
+  residuals -> freeze and run unchanged on a complete canary project.
+
+## 24-06748 whole-project execution result (2026-07-14, Codex)
+- Created/applied the machine-side project assembly: one plan set/document
+  association, levels 01-04, 36 candidate space identities, four proposed
+  plan-view regions, four region-geometry observations, and four level
+  observations. Created zero human decisions, zero source links, and zero
+  eligibility approvals. Plan-set, schedule-region/rows, and viewports still
+  require human confirmation.
+- Fixed the page-first default in `scripts/takeoff.py`: when an active document
+  has multiple labeled `floor_plan` pages, `resolve_pages` now returns all of
+  them in page order. It no longer ranks them by line richness and silently
+  selects one. The explicit project-packet runner remains the authoritative
+  complete-project path.
+- Ran unchanged v4 on all required primary pages A101 p5, A102 p6, A103 p7,
+  and A104 p8. Whole-project result: 20/36 scheduled identities found, 2/36
+  exact numbered rooms within +/-10%, 16 missing identities, and 18
+  unidentified polygons. Coverage is complete; geometry quality failed.
+- Added auditable polygon PDF bounds plus an opt-in project viewport constraint.
+  The constrained v4 rerun removed no candidates and changed no quality metric,
+  proving viewport selection is not the dominant residual failure.
+- Compared engines across the same complete project: v4 = 20 identified / 2
+  accurate / 16 missing / 18 unidentified; existing model = 11 / 0 / 25 / 25;
+  dual = 21 / 2 / 15 / 15. Keep v4 default, do not promote the existing model,
+  and keep dual diagnostic-only. Dual does not improve accurate room quantity.
+- Root residual: boundary semantics, not a single bad floor choice. Failures
+  include merged small rooms, partial garages, exterior/adjacent-space leakage,
+  open-zone divisions, and deck/finish boundaries that wall-only geometry does
+  not encode.
+- Added `scripts/grade_project_geometry.py`, per-run machine-readable/Markdown
+  diagnostics, and
+  `docs/pilot/24-06748-RNVS_GEOMETRY_DIAGNOSTIC_V1.md`. The next data artifact
+  must be human-corrected geometry for every one of the 36 spaces with boundary
+  type and plan/schedule source links. Train a revised semantic-boundary model
+  only after that complete-project correction set exists; split eval by project.
+
+## Geometry architecture reboot (2026-07-14, founder direction)
+- Founder correctly rejected the framing that either v4 or the current ML model
+  merely needed approval. Complete-project evidence shows both are unusable for
+  quantities (2/36 vs 0/36 accurate numbered rooms). They remain diagnostic
+  proposal sources only.
+- Locked `docs/pilot/GEOMETRY_REBOOT_V1.md`: pivot from wall-segment
+  classification to room/quantity-zone segmentation. First test is a
+  point-prompted mask baseline using known room-label locations; the supervised
+  target is in-domain instance/semantic segmentation with room, finish,
+  exterior/deck, wall/obstruction, and ignore semantics. Deterministic code
+  continues to own PDF transforms, snapping, scale, area math, and audits.
+- Added `scripts/build_geometry_annotation_packet.py` and generated a 36-task
+  complete-project packet. Printed schedule SF is reference evidence, never a
+  polygon label. Every space—including missing rooms—requires a human outcome,
+  boundary type, and PDF-coordinate polygon/open-zone/unresolved result.
+- Cloud GPU work is gated: no RunPod spend until the reproducible input bundle,
+  container/checkpoint, max runtime, output path, and budget cap are fixed.
+  Experiment order is promptable zero-shot baseline -> supervised segmentation
+  -> vector graph model only if exact-boundary residuals justify it. Promotion
+  requires project-held-out improvement on all primary metrics and a second
+  complete-project canary.
+- Imported the viewport-constrained v4 diagnostic into V2 Geometry Review for
+  A101-A104: run ids 4-7, machine predictions only, with zero human decisions
+  and zero eligibility approvals. Updated run selectors to show page/sheet,
+  actual engine, and run number. This is a correction queue, not approval.
+
+## SAM test and project portfolio lock (2026-07-15, founder clarification)
+- Clarified the responsibility split for a beginner-operable workflow: SAM
+  proposes pixel masks from room-label point/box prompts; it does not establish
+  plan scope, calculate SF, understand flooring rules, or attach materials.
+  Deterministic PDF/vector code retains transforms, scale, edge snapping,
+  polygon conversion, area math, and audits.
+- `24-06748-RNVS` is the one complete smoke project. All four viewports and all
+  36 scheduled spaces must receive SAM Small prompt variants (point-only,
+  point+negative room labels, and point+rough box), with Large compared only
+  after end-to-end plumbing passes. Save all candidates; never select a mask
+  merely because its area resembles the schedule answer.
+- The first gate is annotation utility: does the proposal reduce correction
+  effort versus drawing from scratch? Agentic review may flag contamination,
+  missing space, wrong view, and suspicious area, but agent agreement remains
+  machine evidence. One project cannot promote a model to production.
+- Portfolio lock: one smoke project -> three to four diverse complete
+  development projects -> two untouched complete evaluation projects. Initial
+  planning range is roughly 150-300 corrected room/quantity-zone masks. Split
+  by project and plan revision; never leak floors/crops from one building
+  across train and evaluation. `14-11290-NEWC` is a finish-join development
+  case, not sealed SF truth without human geometry.
+- RunPod is not 24/7 by default. Complete local preparation before spending:
+  viewport renders, 36 prompts, coordinate transforms, pinned SAM container,
+  result schema, budget/runtime cap, and cleanup. Use one temporary on-demand
+  Pod for the smoke, retrieve and verify outputs, then terminate. If production
+  is intermittent, use scale-to-zero Serverless Flex; an active worker is a
+  later latency/business decision.
+- No RunPod key is needed yet and no secret may be pasted into chat. When
+  automation is ready, use a dedicated minimum-permission `RUNPOD_API_KEY`
+  Codespaces secret. Start with a small prepaid balance and auto-pay disabled.
+- Canonical details now live in `docs/pilot/GEOMETRY_REBOOT_V1.md`; project
+  split rules are mirrored in `docs/pilot/PROJECT_FIRST_EXECUTION_V1.md` and
+  `ESTIMATING_ROADMAP.md`.

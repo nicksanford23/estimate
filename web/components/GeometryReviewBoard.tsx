@@ -8,13 +8,11 @@ import type { GeometryReviewData } from "@/lib/v2Db";
 // run card (left) + region/run verdict rows, center canvas, right issues
 // queue. HONEST DEVIATION from the mockup: the backfilled legacy runs
 // (data/takeoff/*/run.json) carry per-room area_sf/product_action/flags but
-// NO vector polygon coordinates — only a pre-baked overlay JPEG
-// (overlay_path) with colors already burned in. So the canvas here is that
-// raster image (source+polygons already fused, can't be toggled
-// independently) instead of a live SVG overlay, and issue-card "crops" are
-// the same full overlay image (no bbox to crop to) rather than real
-// per-room crops. Toggle pills are stubbed disabled to be honest about
-// this, per the "visible verb set, nothing fake-works" rule.
+// NO full vector polygon rings — only a pre-baked overlay JPEG (overlay_path)
+// with colors already burned in. New project runs retain polygon bounds, but
+// the current canvas does not yet use them as an editable mask/ring. So the
+// canvas is still the fused raster, issue cards still show the full overlay,
+// and toggle pills remain disabled per the "nothing fake-works" rule.
 
 type Props = { data: GeometryReviewData };
 
@@ -63,12 +61,27 @@ export default function GeometryReviewBoard({ data }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [lastDecisionIds, setLastDecisionIds] = useState<Record<string, number>>({});
 
+  // "Green" is EARNED, not self-declared: a room is verified only if its
+  // measured SF matches the finish-schedule answer key (grade='match'). Rooms
+  // the engine called auto_quantity but that DISAGREE with the schedule are the
+  // most important thing to review — they are NOT verified.
+  const matched = run ? run.polys.filter((p) => p.grade === "match") : [];
   const issues = useMemo(
-    () => (run ? run.polys.filter((p) => p.product_action !== "auto_quantity" || !!p.flags.length) : []),
+    () =>
+      run
+        ? run.polys
+            .filter((p) => p.grade !== "match")
+            // disagreements-with-schedule first (worst error at top), then the rest
+            .sort((a, b) => {
+              const rank = (g: string) => (g === "off" ? 0 : 1);
+              if (rank(a.grade) !== rank(b.grade)) return rank(a.grade) - rank(b.grade);
+              return Math.abs(b.error_pct ?? 0) - Math.abs(a.error_pct ?? 0);
+            })
+        : [],
     [run]
   );
-  const autoVerified = run ? run.polys.filter((p) => p.product_action === "auto_quantity") : [];
-  const unverifiedAuto = autoVerified.filter((p) => !polyVerdict.get(p.polygon_prediction_id));
+  const bulkAcceptable = run?.schedule_reference_state === "eligible" ? matched : [];
+  const unverifiedAuto = bulkAcceptable.filter((p) => !polyVerdict.get(p.polygon_prediction_id));
 
   if (!runs.length) {
     return (
@@ -124,6 +137,32 @@ export default function GeometryReviewBoard({ data }: Props) {
   const curRegionVerdict = run ? regionVerdict.get(run.region_id) ?? null : null;
   const curRunVerdict = run ? runVerdict.get(run.run_id) ?? null : null;
   const overlaySrc = run?.overlay_path ? `/api/v2/geomoverlay?path=${encodeURIComponent(run.overlay_path)}` : null;
+  const recommendation = !run
+    ? ""
+    : run.schedule_reference_state === "legacy_unverified"
+      ? "Diagnostic only — the schedule reference is legacy/unverified."
+      : run.schedule_reference_state === "none"
+        ? "Diagnostic only — no eligible area schedule is available for comparison."
+        : issues.length > 0
+          ? `Do not approve — ${issues.length} polygon${issues.length === 1 ? "" : "s"} disagree or cannot be checked.`
+          : !run.training_eligible && !run.evaluation_eligible && !run.demo_eligible
+            ? "Diagnostic only — this run has no evidence eligibility approval."
+            : "Candidate for human approval — all comparable polygons match the qualified schedule reference.";
+
+  function verdictDisabled(verdict: string) {
+    if (!run || !curRegionVerdict || busy === "run") return true;
+    if (verdict === "approved_training") return !run.training_eligible || issues.length > 0;
+    if (verdict === "approved_eval") return !run.evaluation_eligible || issues.length > 0;
+    return false;
+  }
+
+  function verdictTitle(verdict: string) {
+    if (!curRegionVerdict) return "set a region verdict first (SCHEMA_V2 §14)";
+    if (verdict === "approved_training" && !run?.training_eligible) return "blocked: run is not eligible for boundary training";
+    if (verdict === "approved_eval" && !run?.evaluation_eligible) return "blocked: run is not eligible for SF evaluation";
+    if ((verdict === "approved_training" || verdict === "approved_eval") && issues.length > 0) return "blocked: unresolved schedule disagreements or unidentified polygons";
+    return undefined;
+  }
 
   return (
     <div className="grv-wrap">
@@ -140,7 +179,7 @@ export default function GeometryReviewBoard({ data }: Props) {
         <div style={{ padding: "8px 18px", display: "flex", gap: 6 }}>
           {runs.map((r, i) => (
             <button key={r.run_id} className={`btn${i === runIdx ? " primary" : ""}`} onClick={() => setRunIdx(i)}>
-              Run {r.run_no}
+              {r.sheet_title ?? `page ${r.pdf_page_index ?? "?"}`} · {r.engine_label} · run {r.run_no}
             </button>
           ))}
         </div>
@@ -149,11 +188,12 @@ export default function GeometryReviewBoard({ data }: Props) {
       <div className="grv-cols">
         <div className="grv-runcard">
           <div className="eyebrow">Run {run!.run_no} &middot; region: {run!.sheet_title ?? "plan viewport"}</div>
-          <div className="grv-kv"><span>Engine</span><b>legacy dual (rules-v4 + wall_model_v?)</b></div>
+          <div className="grv-kv"><span>Engine</span><b>{run!.engine_label}</b></div>
           <div className="grv-kv"><span>Scale</span><b>{run!.scale_text ?? "—"}</b></div>
           <div className="grv-kv"><span>Rooms proposed</span><b>{run!.polys.length}</b></div>
-          <div className="grv-kv"><span>Anchored to labels</span><b>{autoVerified.length}</b></div>
-          <div className="grv-kv"><span>Flagged</span><b>{issues.length}</b></div>
+          <div className="grv-kv"><span title="measured SF within ±10% of the schedule reference">{run!.schedule_reference_state === "eligible" ? "Verified vs schedule" : "Matches reference"}</span><b style={{ color: matched.length ? "var(--good)" : "var(--muted)" }}>{matched.length}</b></div>
+          <div className="grv-kv"><span title="measured, but disagrees with the schedule or has no schedule row to check">Need review</span><b style={{ color: issues.length ? "var(--bad)" : "var(--muted)" }}>{issues.length}</b></div>
+          <div className="grv-kv"><span>Evidence state</span><b style={{ color: run!.schedule_reference_state === "eligible" ? "var(--good)" : "var(--warn)" }}>{run!.schedule_reference_state.replaceAll("_", " ")}</b></div>
 
           <div className="eyebrow" style={{ marginTop: 14 }}>Region verdict</div>
           <div className="grv-btnrow">
@@ -170,19 +210,17 @@ export default function GeometryReviewBoard({ data }: Props) {
               <button
                 key={v}
                 className={`btn${curRunVerdict === v ? " primary" : ""}${v === "rejected" ? " grv-danger" : ""}`}
-                disabled={!curRegionVerdict || busy === "run"}
-                title={!curRegionVerdict ? "set a region verdict first (SCHEMA_V2 §14)" : undefined}
+                disabled={verdictDisabled(v)}
+                title={verdictTitle(v)}
                 onClick={() => setRunV(v)}
               >
                 {RUN_VERDICT_LABEL[v]}
               </button>
             ))}
           </div>
-          {run!.summary && (
-            <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>
-              Recommend: {run!.summary.n_open ? "eval" : "training"} — {run!.summary.n_open ?? 0} unresolved open zone{(run!.summary.n_open ?? 0) === 1 ? "" : "s"}
-            </p>
-          )}
+          <p style={{ fontSize: 11.5, color: issues.length || run!.schedule_reference_state !== "eligible" ? "var(--warn)" : "var(--muted)", marginTop: 10 }}>
+            {recommendation}
+          </p>
           {err && <div style={{ color: "var(--bad)", fontSize: 12, marginTop: 6 }}>{err}</div>}
         </div>
 
@@ -192,6 +230,9 @@ export default function GeometryReviewBoard({ data }: Props) {
             <span className="chip" style={{ opacity: 0.5 }} title="coming in v1 — needs vector geom_json">labels only</span>
             <span className="chip" style={{ opacity: 0.5 }} title="coming in v1 — needs vector geom_json">previous run</span>
           </div>
+          <p style={{ margin: "4px 8px 8px", color: "var(--warn)", fontSize: 11.5 }}>
+            Baked overlay colors show the legacy engine&apos;s confidence, not current verification. Use the reference comparison at right.
+          </p>
           {overlaySrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={overlaySrc} alt="plan overlay" className="grv-canvas-img" />
@@ -201,7 +242,7 @@ export default function GeometryReviewBoard({ data }: Props) {
         </div>
 
         <div className="grv-issues">
-          <div className="eyebrow">Issues ({issues.length})</div>
+          <div className="eyebrow">Need review ({issues.length}) — measured but unverified vs schedule</div>
           {issues.map((p, i) => {
             const v = polyVerdict.get(p.polygon_prediction_id);
             return (
@@ -218,11 +259,21 @@ export default function GeometryReviewBoard({ data }: Props) {
                 </div>
                 <div className="grv-issue-body">
                   <div style={{ fontWeight: 600, fontSize: 12.5 }}>
-                    {i + 1}. {p.room ? `room ${p.room}` : "unlabeled shape"} — {p.product_action ?? "flagged"}
+                    {i + 1}. {p.room ? `room ${p.room}` : "unlabeled shape"}
+                    {p.grade === "off" && <span className="chip" style={{ marginLeft: 6, borderColor: "var(--bad)", color: "var(--bad)" }}>disagrees w/ schedule</span>}
+                    {p.grade === "none" && p.room && <span className="chip" style={{ marginLeft: 6 }}>no schedule row</span>}
+                    {p.grade === "none" && !p.room && <span className="chip" style={{ marginLeft: 6 }}>unlabeled</span>}
                   </div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                    {p.area_sf != null ? `${p.area_sf} SF` : "—"} {p.flags.length ? `· ${p.flags.join(", ")}` : ""}
-                  </div>
+                  {p.answer_key_sf != null ? (
+                    <div style={{ fontSize: 11.5, marginTop: 2 }}>
+                      measured <b>{p.area_sf} SF</b> vs schedule <b>{p.answer_key_sf} SF</b>{" "}
+                      <span style={{ color: "var(--bad)", fontWeight: 700 }}>({p.error_pct! > 0 ? "+" : ""}{p.error_pct}%)</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                      {p.area_sf != null ? `${p.area_sf} SF measured` : "—"} {p.flags.length ? `· ${p.flags.join(", ")}` : ""}
+                    </div>
+                  )}
                   <div className="grv-btnrow" style={{ marginTop: 6 }}>
                     {verdictOptionsFor(p.product_action).map((opt) => (
                       <button
@@ -243,7 +294,9 @@ export default function GeometryReviewBoard({ data }: Props) {
 
           <div className="grv-bulk">
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 6 }}>
-              {autoVerified.length} rooms auto-verified — review only the {issues.length} flagged above
+              {run!.schedule_reference_state === "eligible"
+                ? `${matched.length} rooms match the qualified schedule (±10%) — ${issues.length} disagree or can't be checked`
+                : `${matched.length} rooms match an unqualified reference (±10%) — bulk acceptance is disabled`}
             </div>
             <button className="btn primary" style={{ width: "100%" }} disabled={busy === "acceptall" || unverifiedAuto.length === 0} onClick={acceptAllAuto}>
               {busy === "acceptall" ? "Accepting…" : `Accept all (${unverifiedAuto.length})`}
