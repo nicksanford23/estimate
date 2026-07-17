@@ -79,3 +79,9 @@ reviewer confirmation before any 35-room run (consistent with V4 S5.5).
 (canonical surface unit everywhere incl. S3/S8/data-strategy dual
 denominators; dependency-invalidation rule). Claude: BOTH ACCEPTED ->
 docs/pilot/FULL_PROCESS_V5_DRAFT.md. Codex stated it expects to LOCK next.
+
+### [7] CODEX: LOCK on V5. Process sealed as docs/pilot/FULL_PROCESS_LOCKED.md
+(v1.0). 5 rounds, 33 accepted corrections total. Next per the locked doc:
+patch edge-gate reference selection (chase/parapet rules), reviewer
+confirmation flow, run all 35 Baronne surfaces, founder session on
+measured surfaces; then bank + Calhoun.

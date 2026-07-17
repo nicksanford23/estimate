@@ -1199,3 +1199,21 @@ and `python3 scripts/pipeline.py board`.
 - NEXT: surface inspection pass/fix per room in /lab; run inspector on
   bank + Calhoun; then FIRST REAL founder lock session on edge-verified
   rooms; v2 re-stamp; then scale per roster.
+
+## FULL PROCESS LOCKED (2026-07-17 late, Fable + Codex, 5 rounds)
+- docs/pilot/FULL_PROCESS_LOCKED.md = v1.0 constitution: S1->S10 project
+  flow (incl. NEW S1.7 scale gate, S5.2 surface-model gate, S5.5
+  reference-confirmed measurement, S10 estimating/export w/ upstream
+  correction routes), async T-LOOP/M1-LOOP, physical_surface_region as
+  canonical unit, dependency invalidation, state/handoff contract,
+  sealed-exam one-use rule. 33 Codex corrections accepted across 5
+  rounds; session log docs/pilot/SESSION_LOG_2026-07-17.md entries 1-7.
+- Edge-gate prototype VALIDATED on disputed rooms: 102 pass (Codex
+  over-call refuted), 304 major_redraw 6-8in (Codex vindicated), 206 one
+  gate reference failure caught (chase-jump), 404/405 invented split
+  proven (49.7sf overlap). Failure modes to patch: thin chases, exterior
+  parapets. scripts/edge_gate.py committed.
+- NEXT: patch reference selection -> reviewer-confirm flow -> gate all 35
+  Baronne surfaces (consolidated per surface, per locked S3/S5.2) ->
+  founder session -> bank + Calhoun -> label book A8 reconciliation ->
+  skill rewrite to match locked process.
