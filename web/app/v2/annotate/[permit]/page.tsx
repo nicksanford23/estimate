@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isValidPermit, loadBoardData } from "@/lib/annotate";
 import AnnotateBoard from "@/components/AnnotateBoard";
@@ -14,5 +15,14 @@ export default async function AnnotatePage({ params }: { params: Promise<{ permi
   if (!isValidPermit(permit)) return notFound();
   const data = loadBoardData(permit);
   if (!data) return notFound();
-  return <AnnotateBoard data={data} />;
+  return (
+    <>
+      <div className="legacy-banner">
+        Internal / legacy screen — the old Outline Rooms editor, not part of normal navigation. Its rows are
+        provisional proposals for re-review. The product path is now{" "}
+        <Link href={`/v2/b/${permit}/floor-areas`}>Floor Areas</Link>.
+      </div>
+      <AnnotateBoard data={data} />
+    </>
+  );
 }

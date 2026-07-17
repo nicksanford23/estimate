@@ -243,6 +243,43 @@ function Editor({
   const areaSf = edit.closed && edit.points.length >= 3 ? polygonAreaSf(edit.points) : null;
   const memberOptions = (data.levelCodes[task.level] ?? []).filter((c) => c.code !== task.code);
 
+  // Zoom + scroll so the task's room (saved/proposal polygon, else the
+  // label anchor neighborhood) fills the canvas — a tall viewport strip at
+  // "Fit" renders the room as an unusable speck (founder feedback 07-17).
+  const zoomToRoom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let x0: number, y0: number, x1: number, y1: number;
+    if (edit.points.length >= 3) {
+      x0 = Math.min(...edit.points.map((p) => p[0]));
+      y0 = Math.min(...edit.points.map((p) => p[1]));
+      x1 = Math.max(...edit.points.map((p) => p[0]));
+      y1 = Math.max(...edit.points.map((p) => p[1]));
+    } else if (task.anchor_px) {
+      [x0, y0] = [task.anchor_px[0] - 220, task.anchor_px[1] - 220];
+      [x1, y1] = [task.anchor_px[0] + 220, task.anchor_px[1] + 220];
+    } else {
+      [x0, y0, x1, y1] = [0, 0, imgW, imgH];
+    }
+    const pad = 70;
+    x0 = Math.max(0, x0 - pad);
+    y0 = Math.max(0, y0 - pad);
+    x1 = Math.min(imgW, x1 + pad);
+    y1 = Math.min(imgH, y1 + pad);
+    const z = Math.min(2.5, Math.max(0.08, Math.min(el.clientWidth / (x1 - x0), el.clientHeight / (y1 - y0))));
+    setZoom(z);
+    requestAnimationFrame(() => {
+      el.scrollLeft = ((x0 + x1) / 2) * z - el.clientWidth / 2;
+      el.scrollTop = ((y0 + y1) / 2) * z - el.clientHeight / 2;
+    });
+  }, [edit.points, task.anchor_px, imgW, imgH]);
+
+  useEffect(() => {
+    zoomToRoom();
+    // mount only: open every task centered on its room
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const screenToImg = useCallback((clientX: number, clientY: number): Pt | null => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -485,6 +522,9 @@ function Editor({
             >
               Fit
             </button>
+            <button className="btn" onClick={zoomToRoom} title="Zoom to this room">
+              Room
+            </button>
             <span className="chip" style={{ alignSelf: "center" }}>
               {Math.round(zoom * 100)}%
             </span>
@@ -499,7 +539,7 @@ function Editor({
             style={{
               border: "1px solid var(--line)",
               borderRadius: 12,
-              background: "#14181d",
+              background: "#e9ecef",
               overflow: "auto",
               height: "72vh",
               position: "relative",
