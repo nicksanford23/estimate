@@ -74,3 +74,8 @@ predicted failure mode, caught); 404/405 invented split proven
 Reference selection reliable on clean interior double-line walls;
 unreliable across thin chases + exterior parapets -> rules + per-edge
 reviewer confirmation before any 35-room run (consistent with V4 S5.5).
+
+### [6] Codex round-4 on V4: NOT LOCKED, 2 final consistency blockers
+(canonical surface unit everywhere incl. S3/S8/data-strategy dual
+denominators; dependency-invalidation rule). Claude: BOTH ACCEPTED ->
+docs/pilot/FULL_PROCESS_V5_DRAFT.md. Codex stated it expects to LOCK next.
