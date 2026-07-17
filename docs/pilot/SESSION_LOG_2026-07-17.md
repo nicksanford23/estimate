@@ -47,3 +47,13 @@ Claude adjudication: ALL 11 ACCEPTED — none break architecture, all
 tighten it; several restore consensus precision that v1 drifted from.
 Wrote docs/pilot/FULL_PROCESS_V2_DRAFT.md incorporating every fix, with
 per-blocker disposition table. Sent back to Codex for round-2 LOCK.
+
+### [3] Codex round-2 on FULL_PROCESS_V2: NOT LOCKED, 8 integration
+blockers (training is async not S9; missing S10 estimating/export; M1
+lifecycle; complete repair/edit regating loop; per-edge confirmation
+mandatory for training truth; scan/raster reference path; exact
+machine-readable pass_measured; state/handoff contract + reviewer
+qualification) + iterative crop-expansion correction.
+Claude: ALL ACCEPTED. Wrote docs/pilot/FULL_PROCESS_V3_DRAFT.md —
+restructured into PROJECT FLOW (S1->S8->S10) + async IMPROVEMENT LOOPS
+(T-LOOP, M1-LOOP), added §4 state contract. Sent for round-3 LOCK.
