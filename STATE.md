@@ -1173,3 +1173,29 @@ and `python3 scripts/pipeline.py board`.
   building-2 cards to Telegram; scans-precision gap needs a plan;
   ML_ROADMAP_REVIEW_R2.md has uncommitted Codex edits (not committed
   here, review separately).
+
+## Edge-inspection loop proven + temp workbench (2026-07-17 evening, Fable)
+- Founder reset: ALL 11 prior locks RETRACTED (never actually reviewed);
+  0 human-verified rooms is the honest count. Neon/R2 backups updated.
+- EDGE INSPECTOR built + run on 24-06748 (scripts/edge_inspect_render.py;
+  numbered-edge images, per-edge verdicts, snap-based repair, re-inspect):
+  92.9% edges pass first look; 6/6 rejected edges repaired+verified;
+  31/35 rooms fully passing; 4 honest unresolved (open great room x3,
+  diagonal 203). 206 TEST CASE CAUGHT (-7.5% area hid a wall-crossing
+  edge; repaired +5.5in; verified) — the confident-but-wrong class is now
+  machine-detected. Flag: 209A/211 possible same-WC duplicate. Artifacts:
+  data/sam_smoke/24-06748-RNVS/inspection/. NEW SUCCESS METRICS locked:
+  edge-acceptance % + human fix effort, NOT %-of-schedule.
+- Building 3 (1514 Calhoun 20-29653) pipeline COMPLETE: 69 roster / 43
+  outlined / 25 no_plan (units never filed) / mean conf 0.31 all to
+  review. Bank (Liberty Gentilly) complete earlier: 18/18.
+- TEMP WORKBENCH /lab live (founder-driven design session): projects by
+  ADDRESS never permit number (standing rule); per project 4 buttons
+  (full PDF / trimmed plans as IMAGES / report / editor) + overlay
+  gallery; kept-pages PDFs all 3 projects + 5000px page renders (images
+  default for humans, PDFs = math + audit + download — standing rule).
+  start_site.sh supervisor loop was resurrecting stale builds — killed;
+  script needs fixing before next use.
+- NEXT: surface inspection pass/fix per room in /lab; run inspector on
+  bank + Calhoun; then FIRST REAL founder lock session on edge-verified
+  rooms; v2 re-stamp; then scale per roster.

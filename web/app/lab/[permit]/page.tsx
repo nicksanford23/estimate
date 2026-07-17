@@ -15,6 +15,10 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
   const hasEditor = fs.existsSync(
     path.join(process.cwd(), "..", "data", "geometry_annotations", `${permit}.geometry_annotation_packet_v1.json`),
   );
+  const keptDir = path.join(process.cwd(), "..", "data", "sam_smoke", permit, "kept_pages");
+  const keptPages = fs.existsSync(keptDir)
+    ? fs.readdirSync(keptDir).filter((x) => /^page_[0-9]{2}\.png$/.test(x)).map((x) => x.slice(5, 7)).sort()
+    : [];
   const f = (kind: string, name = "") =>
     `/api/lab/file?permit=${permit}&kind=${kind}${name ? `&name=${name}` : ""}`;
   return (
@@ -24,13 +28,14 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
         <p><Link href="/lab">← workbench</Link></p>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-        {p.docs.map((d) => (
-          <a key={d} className="btn" href={f("doc", d)} target="_blank">Full plan set (doc {d})</a>
-        ))}
-        {p.keptPdf && <a className="btn" href={f("kept")} target="_blank">Kept pages PDF</a>}
-        <Link className="btn" href={`/lab/${permit}/pages`}>Kept pages (fast images)</Link>
+        {p.docs.length > 0 && (
+          <a className="btn" href={f("doc", p.docs[0])} target="_blank">Full plan set (PDF)</a>
+        )}
+        {keptPages.length > 0 && (
+          <Link className="btn" href={`/lab/${permit}/pages`}>Trimmed plans (images)</Link>
+        )}
         {p.report && <a className="btn" href={f("report")} target="_blank">Pipeline report</a>}
-        {hasEditor && <Link className="btn" href={`/v2/annotate/${permit}`}>Open room editor</Link>}
+        {hasEditor && <Link className="btn" href={`/v2/annotate/${permit}`}>Room editor</Link>}
       </div>
       <h2 style={{ marginTop: 20 }}>Room overlays — machine proposals, not truth</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginTop: 10 }}>
