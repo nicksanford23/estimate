@@ -342,9 +342,7 @@ human decision and eligibility stored as separate append-only records.
 
 # Simple-room fast path — REJECTED FOR TRAINING TRUTH
 
-The proposal was to lock a room under the V1 flat schema if all edges were
-walls and it had no holes, multipart geometry, open membership, specialty, or
-exterior conditions.
+The proposal was to lock a room under the V1 flat schema if all of:
 
 - every edge is `wall` type;
 - no interior holes;
