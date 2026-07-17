@@ -63,3 +63,14 @@ physical_surface_region as canonical unit; pass-definition circularity;
 sealed-exam one-use lifecycle; S10 upstream correction routes).
 Claude: ALL ACCEPTED -> docs/pilot/FULL_PROCESS_V4_DRAFT.md (lock
 candidate). Codex stated "after these corrections, ready for lock."
+
+### [5] Edge-gate PROTOTYPE results (data/sam_smoke/24-06748-RNVS/edge_gate/
+EDGE_GATE_PROTOTYPE_REPORT.md): 102 all-pass <=1.38in (Codex over-call
+refuted by measurement); 304 chords cut 6-8in INSIDE curved wall
+(Codex VINDICATED, Claude blind auditor refuted); 206 top 2.25in minor +
+one gate reference-selection failure (jumped a thin chase — exactly the
+predicted failure mode, caught); 404/405 invented split proven
+(49.7 sf overlap, split lines disagree 32.5in, wrong_surface_model).
+Reference selection reliable on clean interior double-line walls;
+unreliable across thin chases + exterior parapets -> rules + per-edge
+reviewer confirmation before any 35-room run (consistent with V4 S5.5).
