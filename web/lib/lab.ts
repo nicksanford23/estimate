@@ -33,6 +33,8 @@ export type LabRoom = {
   confidence: number | null;
   outcome: string | null;      // proposal outcome suggestion
   decision: string | null;     // latest human decision if any
+  inspection: "pass" | "repaired" | "unresolved" | null; // edge-inspection room verdict
+  repairImage: boolean;        // before/after render exists
 };
 
 export type LabProject = {
@@ -60,6 +62,19 @@ export function loadProject(permit: string): LabProject | null {
   const dir = path.join(SMOKE, permit);
   if (!fs.existsSync(dir) || !/^[A-Za-z0-9-]+$/.test(permit)) return null;
   const propsPath = path.join(dir, "results", "proposals_for_editor.json");
+  // edge-inspection verdicts, if the inspector has run on this project
+  const inspection: Record<string, { verdict: string }> = {};
+  const inspPath = path.join(dir, "inspection", "edge_inspection.json");
+  if (fs.existsSync(inspPath)) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(inspPath, "utf8"));
+      const roomsArr = Array.isArray(raw) ? raw : raw.rooms ?? Object.values(raw);
+      for (const r of roomsArr) {
+        if (r && typeof r === "object" && "code" in r)
+          inspection[String(r.code)] = { verdict: String(r.room_verdict ?? "") };
+      }
+    } catch { /* ignore unreadable inspection */ }
+  }
   const rooms: LabRoom[] = [];
   const decisions = latestDecisions(permit);
   if (fs.existsSync(propsPath)) {
@@ -67,12 +82,15 @@ export function loadProject(permit: string): LabProject | null {
       const props = JSON.parse(fs.readFileSync(propsPath, "utf8"));
       for (const [taskId, p] of Object.entries<Record<string, unknown>>(props)) {
         const code = String(p.code ?? taskId);
+        const v = inspection[code]?.verdict ?? null;
         rooms.push({
           code,
           overlay: fs.existsSync(path.join(dir, "claude_vision", `overlay_${code}.png`)),
           confidence: typeof p.confidence === "number" ? p.confidence : null,
           outcome: typeof p.outcome_suggestion === "string" ? p.outcome_suggestion : null,
           decision: decisions[taskId] ?? null,
+          inspection: v === "pass" ? "pass" : v === "needs_repair" ? "repaired" : v === "unresolved" ? "unresolved" : null,
+          repairImage: fs.existsSync(path.join(dir, "inspection", `repair_${code}.png`)),
         });
       }
     } catch { /* unreadable proposals -> empty room list */ }

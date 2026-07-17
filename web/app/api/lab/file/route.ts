@@ -28,6 +28,10 @@ export async function GET(req: NextRequest) {
     if (!/^[0-9]{2}$/.test(name)) return new Response("bad name", { status: 400 });
     file = path.join(SMOKE, permit, "kept_pages", `page_${name}.png`);
     type = "image/png";
+  } else if (kind === "repair" || kind === "inspect") {
+    if (!/^[A-Za-z0-9]+$/.test(name)) return new Response("bad name", { status: 400 });
+    file = path.join(SMOKE, permit, "inspection", `${kind === "repair" ? "repair" : "inspect"}_${name}.png`);
+    type = "image/png";
   } else if (kind === "overlay") {
     if (!/^[A-Za-z0-9]+$/.test(name)) return new Response("bad name", { status: 400 });
     file = path.join(SMOKE, permit, "claude_vision", `overlay_${name}.png`);
