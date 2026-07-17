@@ -57,3 +57,9 @@ qualification) + iterative crop-expansion correction.
 Claude: ALL ACCEPTED. Wrote docs/pilot/FULL_PROCESS_V3_DRAFT.md —
 restructured into PROJECT FLOW (S1->S8->S10) + async IMPROVEMENT LOOPS
 (T-LOOP, M1-LOOP), added §4 state contract. Sent for round-3 LOCK.
+
+### [4] Codex round-3 on V3: NOT LOCKED, 5 blockers (S1.7 scale gate;
+physical_surface_region as canonical unit; pass-definition circularity;
+sealed-exam one-use lifecycle; S10 upstream correction routes).
+Claude: ALL ACCEPTED -> docs/pilot/FULL_PROCESS_V4_DRAFT.md (lock
+candidate). Codex stated "after these corrections, ready for lock."
