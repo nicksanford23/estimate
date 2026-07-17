@@ -1141,3 +1141,35 @@ and `python3 scripts/pipeline.py board`.
   and editor, separate decision/eligibility events, project-level overlap/gap
   checks, estimator confirmation of B1-B7, and reviewed coverage of all 36 pilot
   spaces. No RunPod training spend is justified before those gates pass.
+
+## First human locks + approval loop live (2026-07-17 night, Fable)
+- FIRST TRUSTED TRAINING DATA: Nick locked 11 rooms on 24-06748-RNVS
+  (107,102,206,403 Claude-reviewed-clean + 100,101,103,209,212,308A,309
+  wall-snapped), 208 skipped-unresolved (22% under schedule post-snap).
+  data/geometry_annotations/human/24-06748-RNVS.outcomes.jsonl,
+  reviewer nick:chat, fast-path v1 rows.
+- Codex R2 on label book: three-layer architecture ACCEPTED; simple-room
+  fast path REJECTED for training truth -> tonight's 11 locks stand as
+  human decisions but need re-review into schema v2 before any manifest
+  eligibility (no practical delay: training gate needs 150+ rooms/2+
+  projects/locked book regardless). Codex shipped
+  docs/pilot/schema/geometry_annotation_v2.schema.json + examples/ and
+  edited GEOMETRY_LABEL_BOOK_V2_DRAFT.md (status: REVIEWED DRAFT,
+  rules/schema not locked). Nick accepted the ruling.
+- TELEGRAM LOOP LIVE: scripts/telegram_review_bot.py (stdlib bot;
+  whoami/send/listen; LOCK/SKIP -> append-only outcomes; free-text ->
+  fix_requests log). Bot @Training_label_bot, chat id in .env. NOTE:
+  something else consumed early getUpdates (suspect a Codex-side poller
+  — resolve or use separate bots).
+- WALL SNAP works: scripts/snap_polygon_walls.py — vision polygon edges
+  snapped to PDF vector wall lines (parallel candidates within 1ft,
+  length-weighted, vertex rebuild by line intersection). Visually
+  verified 100/209: green-on-wall quality. Won't help scans (no vectors).
+- Building 2 (14-11290-NEWC) proposals complete: 18/18 rooms, all to
+  review queue (none >=0.7 conf), 4 judgment blockers incl. 108 dashed
+  front + 101x102 overlap. PIPELINE_REPORT.md in its sam_smoke dir.
+- Usage lesson banked as memory: one bg agent at a time, batch, ask first.
+- NEXT: v2 schema re-stamp flow for the 11 locks; Nick re-verify pass;
+  building-2 cards to Telegram; scans-precision gap needs a plan;
+  ML_ROADMAP_REVIEW_R2.md has uncommitted Codex edits (not committed
+  here, review separately).
