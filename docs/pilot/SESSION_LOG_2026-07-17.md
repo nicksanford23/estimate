@@ -36,3 +36,14 @@ by path. (Codex: the tail entries are the freshest context.)
 Codex can review — tell me how"
 Claude: this file is the mechanism. Claude appends each substantive
 exchange going forward; founder does nothing; Codex reads this file.
+
+### [2] Founder relayed Codex round-1 review of FULL_PROCESS_V1_DRAFT:
+NOT LOCKED, 11 blockers (non-destructive S1; missing plan-set map; roster
+union + identity/surface split; multi-scale scale-derived evidence packet;
+nominate-then-confirm references; A8 area reconciliation; 4in provisional;
+early surface-model gate; repairs re-enter criticism; click != training
+truth; S9 exploratory/model-agnostic) + move status out of normative doc.
+Claude adjudication: ALL 11 ACCEPTED — none break architecture, all
+tighten it; several restore consensus precision that v1 drifted from.
+Wrote docs/pilot/FULL_PROCESS_V2_DRAFT.md incorporating every fix, with
+per-blocker disposition table. Sent back to Codex for round-2 LOCK.
