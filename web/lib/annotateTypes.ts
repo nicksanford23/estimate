@@ -58,6 +58,9 @@ export interface PageTransform {
 
 // One append-only row in data/geometry_annotations/human/<permit>.outcomes.jsonl.
 export interface OutcomeRow {
+  // V1 rows are retained as proposals for V2 re-review. This explicit marker
+  // prevents a saved editor row from being mistaken for qualified truth.
+  record_status?: "v1_provisional_not_eligible";
   task_id: string;
   saved_at: string;
   reviewer: string;

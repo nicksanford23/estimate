@@ -1114,3 +1114,30 @@ and `python3 scripts/pipeline.py board`.
   editor visual sign-off; review arm-3 proposals in editor. NEXT DRIVER
   WORK: approval-loop spec; open-zone crops fix (level-viewport context
   for open plans); then dev-portfolio expansion per GEOMETRY_REBOOT_V1.
+
+## Geometry Label Book V2 reviewed contract (2026-07-17, Codex)
+- Reviewed `GEOMETRY_LABEL_BOOK_V2_DRAFT.md` against the V1 review and the
+  actual annotation editor/save format. Accepted the three-layer architecture:
+  observable surface geometry, swappable estimating policy, and append-only
+  annotation/review governance.
+- Rejected the proposed V1 “simple-room fast path” for training truth. V1 loses
+  edge evidence, door-threshold alignment, immutable source/transform identity,
+  precision evidence, reviewer qualification, and eligibility history. Existing
+  V1 rows remain useful proposals, but require V2 re-review and cannot receive
+  training/evaluation eligibility.
+- Corrected the contract: `threshold` is an explicit edge type; geometry status,
+  zone form, surface kind, and Layer-B scope status are separate; `not_in_scope`
+  never erases Layer-A geometry; only true no-floor voids become holes; both
+  precision gates must pass against independent reviewed geometry (never the
+  printed schedule area).
+- Added the normative draft-07 schema at
+  `docs/pilot/schema/geometry_annotation_v2.schema.json`, a passing example at
+  `docs/pilot/examples/geometry_annotation_v2.example.json`, and executable
+  structural/semantic validation in
+  `scripts/validate_geometry_annotation_v2.py`. The validator deliberately
+  rejects the current V1 JSONL rows.
+- CURRENT GATE: the existing `/v2/annotate` editor is a V1 proposal/review tool,
+  not a truth-labeling system. Before any GPU training: implement the V2 packet
+  and editor, separate decision/eligibility events, project-level overlap/gap
+  checks, estimator confirmation of B1-B7, and reviewed coverage of all 36 pilot
+  spaces. No RunPod training spend is justified before those gates pass.

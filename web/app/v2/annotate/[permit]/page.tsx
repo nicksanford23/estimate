@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 // Geometry annotation editor — FUNCTIONAL PILOT SLICE (no approved mockup;
 // see design-loop caveat in the component header). Reads the immutable
-// annotation packet + sam_smoke viewport bundle, writes append-only human
-// outcomes. Route: /v2/annotate/<permit>.
+// V1 annotation packet + sam_smoke viewport bundle, writes append-only
+// provisional review outcomes. These rows are proposals for V2 re-review,
+// never training/evaluation truth. Route: /v2/annotate/<permit>.
 export default async function AnnotatePage({ params }: { params: Promise<{ permit: string }> }) {
   const { permit } = await params;
   if (!isValidPermit(permit)) return notFound();

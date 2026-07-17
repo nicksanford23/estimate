@@ -8,10 +8,11 @@
 // match the existing /v2 pages (globals.css tokens/classes) but NOT a
 // signed-off product surface. Nick must visually review before it counts.
 //
-// What it does: pick a task -> outline the flooring quantity zone on the level
-// viewport (vertices in PIXEL space) -> pick an outcome + boundary types ->
-// save. Save converts pixels to PDF/contract coords server-side and appends
-// one row to the append-only human outcomes JSONL (packet stays immutable).
+// What it does: pick a task -> outline a provisional flooring region on the
+// level viewport (vertices in PIXEL space) -> pick a V1 outcome + coarse
+// boundary types -> save. Save converts pixels to PDF/contract coords
+// server-side and appends one row to the V1 human outcomes JSONL (packet stays
+// immutable). V1 rows are proposals for V2 re-review, not qualified truth.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -92,14 +93,18 @@ export default function AnnotateBoard({ data }: Props) {
   return (
     <div className="container" style={{ paddingBottom: 60 }}>
       <div className="page-head">
-        <span className="eyebrow">Geometry annotation · pilot slice</span>
+        <span className="eyebrow">Geometry annotation · V1 provisional review</span>
         <h1>Room outlines — {data.permit}</h1>
         <p>
-          Outline each scheduled flooring zone on its level viewport, then record an outcome + boundary types.
-          Human outcomes are append-only; the packet is never mutated. Image source: {data.imageSourceNote}.
+          Review or correct a proposed outline, then record a provisional V1 outcome. Rows are append-only and the
+          packet is never mutated. Image source: {data.imageSourceNote}.
+        </p>
+        <p style={{ fontSize: 13, color: "var(--warn)", marginTop: 4 }}>
+          This editor does not capture the complete Geometry V2 contract. Saving here does not create training or
+          evaluation truth; every row must be re-reviewed in the V2 editor after it is implemented.
         </p>
         <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
-          No approved mockup exists for this editor yet — it is a functional pilot, pending founder visual sign-off.
+          No approved mockup exists yet — this remains a functional pilot pending founder visual sign-off.
         </p>
       </div>
 
@@ -154,7 +159,7 @@ function TaskList({
   return (
     <div>
       <div className="v2progress" style={{ marginTop: 0 }}>
-        {savedCount} / {total} rooms have a saved outcome
+        {savedCount} / {total} rooms have a saved provisional V1 outcome
         <div className="v2progress-bar" style={{ maxWidth: 320 }}>
           <div className="v2progress-fill" style={{ width: `${(savedCount / total) * 100}%` }} />
         </div>
@@ -432,7 +437,7 @@ function Editor({
         setMsg(`Save failed: ${json.error ?? res.statusText}`);
       } else {
         onSaved(json.row, polygonPx);
-        setMsg("Saved. Row appended to human outcomes JSONL.");
+        setMsg("Saved as provisional V1 review. V2 re-review is still required.");
       }
     } catch (err) {
       setMsg(`Save error: ${(err as Error).message}`);
@@ -485,7 +490,7 @@ function Editor({
             </span>
             {task.proposal && (
               <button className="btn" onClick={loadProposal} title={`Start from ${task.proposal.source}`}>
-                Load SAM proposal
+                Load machine proposal
               </button>
             )}
           </div>
@@ -715,7 +720,7 @@ function Editor({
           )}
 
           <button className="btn primary" style={{ width: "100%" }} onClick={save} disabled={!validity.ok || saving}>
-            {saving ? "Saving…" : task.latest ? "Save new outcome (supersedes)" : "Save outcome"}
+            {saving ? "Saving…" : task.latest ? "Save new provisional review (supersedes)" : "Save provisional review"}
           </button>
           {task.latest && (
             <p className="v2micro">

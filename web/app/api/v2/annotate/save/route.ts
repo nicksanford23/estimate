@@ -149,6 +149,7 @@ export async function POST(req: Request) {
   }
 
   const row: OutcomeRow = {
+    record_status: "v1_provisional_not_eligible",
     task_id: task.task_id,
     saved_at: new Date().toISOString(),
     reviewer,

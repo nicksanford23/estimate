@@ -1,0 +1,86 @@
+{
+  "schema_version": "geometry_annotation_v2",
+  "annotation_id": "example_24-06748_101_001",
+  "task_id": "24-06748-RNVS:01 LEVEL:101",
+  "zone_id": "24-06748-RNVS:01 LEVEL:zone_101",
+  "identity_memberships": [
+    {
+      "space_code": "101",
+      "relationship": "primary",
+      "evidence_refs": ["sheet=A101;room_tag=101"]
+    }
+  ],
+  "geometry_status": "resolved",
+  "zone_form": "enclosed",
+  "surface_kind": "ordinary_floor",
+  "scope_status": "unreviewed",
+  "scope_evidence_refs": [],
+  "surface_geometry": {
+    "type": "MultiPolygon",
+    "polygons": [
+      {
+        "part_id": "part_1",
+        "exterior": {
+          "coordinates_pdf": [[0, 0], [120, 0], [120, 120], [0, 120], [0, 0]],
+          "edges": [
+            {
+              "seg_id": "e0",
+              "boundary_type": "wall",
+              "alignment_reference": "not_applicable",
+              "finish_continuity": "not_applicable",
+              "evidence_refs": ["sheet=A101;edge=north"]
+            },
+            {
+              "seg_id": "e1",
+              "boundary_type": "threshold",
+              "alignment_reference": "jamb_line",
+              "finish_continuity": "unknown",
+              "evidence_refs": ["sheet=A101;door=101A"]
+            },
+            {
+              "seg_id": "e2",
+              "boundary_type": "wall",
+              "alignment_reference": "not_applicable",
+              "finish_continuity": "not_applicable",
+              "evidence_refs": ["sheet=A101;edge=south"]
+            },
+            {
+              "seg_id": "e3",
+              "boundary_type": "wall",
+              "alignment_reference": "not_applicable",
+              "finish_continuity": "not_applicable",
+              "evidence_refs": ["sheet=A101;edge=west"]
+            }
+          ]
+        },
+        "holes": []
+      }
+    ]
+  },
+  "observed_obstructions": [],
+  "precision": {
+    "max_edge_deviation_in": null,
+    "area_error_pct": null,
+    "reference_geometry_ref": null,
+    "passes": null
+  },
+  "source": {
+    "permit": "24-06748-RNVS",
+    "onestop_doc_id": 7372349,
+    "document_revision": "600 Baronne 6-28-24 Arch",
+    "document_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "page_index": 5,
+    "sheet_number": "A101",
+    "viewport_bbox_pdf": [1961.24, 86.4, 674.18, 1879.2],
+    "phase": "proposed",
+    "viewport_transform_id": "sam_smoke_bundle:page_5",
+    "viewport_transform_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "unresolved_reason": null,
+  "versions": {
+    "geometry_book": "v2-reviewed-draft",
+    "estimating_policy": "unapplied"
+  },
+  "machine_proposal": null,
+  "human_decision_ref": null
+}

@@ -1,0 +1,364 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://estimate.local/schemas/geometry_annotation_v2.schema.json",
+  "title": "Geometry annotation v2",
+  "description": "Observable floor-surface geometry. Human decisions and evidence-eligibility events are separate append-only records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "annotation_id",
+    "task_id",
+    "zone_id",
+    "identity_memberships",
+    "geometry_status",
+    "zone_form",
+    "surface_kind",
+    "scope_status",
+    "scope_evidence_refs",
+    "surface_geometry",
+    "observed_obstructions",
+    "precision",
+    "source",
+    "unresolved_reason",
+    "versions",
+    "machine_proposal",
+    "human_decision_ref"
+  ],
+  "properties": {
+    "schema_version": {"const": "geometry_annotation_v2"},
+    "annotation_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "zone_id": {"type": "string", "minLength": 1},
+    "identity_memberships": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/identityMembership"}
+    },
+    "geometry_status": {
+      "enum": ["resolved", "partial", "unresolved"]
+    },
+    "zone_form": {
+      "enum": ["enclosed", "open", "finish_defined"]
+    },
+    "surface_kind": {
+      "enum": ["ordinary_floor", "specialty_surface"]
+    },
+    "scope_status": {
+      "enum": ["unreviewed", "in_scope", "not_in_scope", "unresolved"]
+    },
+    "scope_evidence_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "surface_geometry": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/definitions/surfaceGeometry"}
+      ]
+    },
+    "observed_obstructions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/obstruction"}
+    },
+    "precision": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/definitions/precision"}
+      ]
+    },
+    "source": {"$ref": "#/definitions/source"},
+    "unresolved_reason": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "enum": [
+            "clipped",
+            "illegible",
+            "contradictory",
+            "missing_boundary_evidence",
+            "missing_finish_boundary",
+            "external_reference_required"
+          ]
+        }
+      ]
+    },
+    "versions": {"$ref": "#/definitions/versions"},
+    "machine_proposal": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/definitions/machineProposal"}
+      ]
+    },
+    "human_decision_ref": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "minLength": 1}
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"geometry_status": {"const": "resolved"}}},
+      "then": {
+        "properties": {
+          "surface_geometry": {"$ref": "#/definitions/surfaceGeometry"},
+          "unresolved_reason": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"geometry_status": {"const": "partial"}}},
+      "then": {
+        "properties": {
+          "surface_geometry": {"$ref": "#/definitions/surfaceGeometry"},
+          "unresolved_reason": {"type": "string"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"geometry_status": {"const": "unresolved"}}},
+      "then": {
+        "properties": {
+          "surface_geometry": {"type": "null"},
+          "precision": {"type": "null"},
+          "unresolved_reason": {"type": "string"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"scope_status": {"const": "not_in_scope"}}},
+      "then": {
+        "properties": {
+          "scope_evidence_refs": {"minItems": 1}
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "number"}
+    },
+    "ringCoordinates": {
+      "type": "array",
+      "minItems": 4,
+      "items": {"$ref": "#/definitions/point"}
+    },
+    "identityMembership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["space_code", "relationship", "evidence_refs"],
+      "properties": {
+        "space_code": {"type": "string", "minLength": 1},
+        "relationship": {
+          "enum": ["primary", "member", "external_tag", "leader_link"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seg_id", "boundary_type", "evidence_refs"],
+      "properties": {
+        "seg_id": {"type": "string", "minLength": 1},
+        "boundary_type": {
+          "enum": ["wall", "threshold", "finish", "exterior", "open_split", "unresolved"]
+        },
+        "alignment_reference": {
+          "enum": ["jamb_line", "wall_center", "finish_transition", "not_applicable"]
+        },
+        "finish_continuity": {
+          "enum": ["continuous", "changes", "unknown", "not_applicable"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "unresolved_reason": {
+          "enum": [
+            "clipped",
+            "illegible",
+            "contradictory",
+            "missing_boundary_evidence",
+            "missing_finish_boundary",
+            "external_reference_required"
+          ]
+        }
+      }
+    },
+    "ring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinates_pdf", "edges"],
+      "properties": {
+        "coordinates_pdf": {"$ref": "#/definitions/ringCoordinates"},
+        "edges": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"$ref": "#/definitions/edge"}
+        }
+      }
+    },
+    "hole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hole_id", "hole_kind", "coordinates_pdf", "edges"],
+      "properties": {
+        "hole_id": {"type": "string", "minLength": 1},
+        "hole_kind": {
+          "enum": ["shaft", "masonry_core", "open_to_below", "other_true_no_floor_void"]
+        },
+        "coordinates_pdf": {"$ref": "#/definitions/ringCoordinates"},
+        "edges": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"$ref": "#/definitions/edge"}
+        }
+      }
+    },
+    "polygonPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["part_id", "exterior", "holes"],
+      "properties": {
+        "part_id": {"type": "string", "minLength": 1},
+        "exterior": {"$ref": "#/definitions/ring"},
+        "holes": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/hole"}
+        }
+      }
+    },
+    "surfaceGeometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "polygons"],
+      "properties": {
+        "type": {"const": "MultiPolygon"},
+        "polygons": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/polygonPart"}
+        }
+      }
+    },
+    "obstruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["obstruction_id", "kind", "footprint_pdf", "floor_beneath", "evidence_refs"],
+      "properties": {
+        "obstruction_id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": ["casework", "island", "tub", "built_in", "column", "shaft", "chase", "masonry_core", "other"]
+        },
+        "footprint_pdf": {"$ref": "#/definitions/ringCoordinates"},
+        "dimensions_ft": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "number", "exclusiveMinimum": 0}
+        },
+        "floor_beneath": {"enum": ["yes", "no", "unknown"]},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_edge_deviation_in", "area_error_pct", "reference_geometry_ref", "passes"],
+      "properties": {
+        "max_edge_deviation_in": {"type": ["number", "null"], "minimum": 0},
+        "area_error_pct": {"type": ["number", "null"], "minimum": 0},
+        "reference_geometry_ref": {"type": ["string", "null"]},
+        "passes": {"type": ["boolean", "null"]}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "permit",
+        "onestop_doc_id",
+        "document_revision",
+        "document_sha256",
+        "page_index",
+        "sheet_number",
+        "viewport_bbox_pdf",
+        "phase",
+        "viewport_transform_id",
+        "viewport_transform_sha256"
+      ],
+      "properties": {
+        "permit": {"type": "string", "minLength": 1},
+        "onestop_doc_id": {"type": ["integer", "string"]},
+        "document_revision": {"type": "string", "minLength": 1},
+        "document_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+        "page_index": {"type": "integer", "minimum": 0},
+        "sheet_number": {"type": "string", "minLength": 1},
+        "viewport_bbox_pdf": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {"type": "number"}
+        },
+        "phase": {"enum": ["proposed", "existing", "demolition", "mixed", "unresolved"]},
+        "viewport_transform_id": {"type": "string", "minLength": 1},
+        "viewport_transform_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"}
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["geometry_book", "estimating_policy"],
+      "properties": {
+        "geometry_book": {"type": "string", "minLength": 1},
+        "estimating_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "machineProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_id",
+        "source",
+        "model_version",
+        "proposal_rank",
+        "score",
+        "score_type",
+        "geometry_pdf",
+        "prompt_points",
+        "edit_actions"
+      ],
+      "properties": {
+        "proposal_id": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "model_version": {"type": "string", "minLength": 1},
+        "proposal_rank": {"type": "integer", "minimum": 1},
+        "score": {"type": ["number", "null"]},
+        "score_type": {
+          "enum": ["uncalibrated_model_score", "calibrated_probability", "rank_only", "not_provided"]
+        },
+        "geometry_pdf": {"type": ["object", "null"]},
+        "prompt_points": {"type": "array"},
+        "edit_actions": {"type": "array"}
+      }
+    }
+  }
+}
