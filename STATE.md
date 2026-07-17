@@ -1021,3 +1021,96 @@ and `python3 scripts/pipeline.py board`.
 - Canonical details now live in `docs/pilot/GEOMETRY_REBOOT_V1.md`; project
   split rules are mirrored in `docs/pilot/PROJECT_FIRST_EXECUTION_V1.md` and
   `ESTIMATING_ROADMAP.md`.
+
+## SAM smoke G0+G1 executed (2026-07-16 evening, Fable session)
+- G0 package built + PASSED (agent): 4 viewports @24px/ft, 35/36 prompts
+  (33 pdf_text, 2 visual_manual: 209A/211; 210=7SF closet explicit no_anchor),
+  transforms round-trip 6.5e-13px, fake-mode dry run 421 checks PASS.
+  Duplicate-anchor diagnosis: door tags share the room-number convention;
+  rule = keep hit with "SF" token below, reject `| `-neighbor hits.
+  Scripts: build_sam_smoke_bundle / sam_smoke_runner / verify_sam_smoke_results.
+- G1 RAN on RunPod 3090 (~$0.15 total, pod terminated): SAM 2.1 Small AND
+  Large, 35 rooms x 3 variants x 3 masks each. Results verified locally
+  (results_gpu/, results_gpu_large/). OPS: Nick's new payment = NEW RunPod
+  account (user_3GbOkxH..., $15 balance); dockerArgs boot STILL broken
+  (2 pods crash-looped) -> SSH-PTY path; account proxy SSH denied (no
+  registered pubkey on new acct) -> DIRECT ssh via pod public ip:port
+  works (key ~/.ssh/runpod_ed25519 injected via PUBLIC_KEY env).
+  deploy_sam_smoke.py (agent) + deploy_sam_smoke_lean.py; update
+  SSH_ACCOUNT_SUFFIX before reusing proxy path.
+- G1 VERDICT (visual, image rule): raw masks = confetti (holes at every
+  stroke; point-only grabs the label tag itself). After deterministic
+  cleanup (binary_closing+fill_holes+largest-component): closest-candidate
+  DIAGNOSTIC vs schedule = 15/35 within 10%, 26/35 within 25% (Large).
+  Visual: 209 M.BATH + 107 GARAGE = coherent wall-following rooms
+  (trim-and-accept quality); 204 = right area WRONG shape (furniture
+  meander, laundry bleed); several rooms garbage. Root cause: full-strip
+  images downscaled by SAM to ~10px/ft -> walls ~1px. NEXT = G1b per-room
+  crops at native resolution, same harness, ~$0.15.
+- Editor BUILT (agent): /v2/annotate/[permit] — SVG polygon editor, new
+  files only, append-only data/geometry_annotations/human/*.outcomes.jsonl,
+  label-book outcomes/boundary types, proposal-preload hook
+  (results/proposals_for_editor.json). Lint/tsc clean. NEEDS Nick visual
+  sign-off (no approved mockup — functional pilot slice).
+- Label book DRAFT at docs/pilot/GEOMETRY_LABEL_BOOK_V1_DRAFT.md — 10 rules
+  each with proposed default + FOUNDER ANSWER: pending; Codex review queued.
+- OPEN: Nick label-book answers; editor sign-off; G1b crop rerun; RunPod
+  key was pasted in chat (Nick accepted risk, rotate at leisure); register
+  ssh pubkey on new acct (updateUserSettings mutation needs String! fix).
+
+## G1b crop rerun + 3-arm bake-off (2026-07-16 late, Fable session)
+- G1b bundle (agent): 35 per-room crops from ORIGINAL PDF, 16.5-48 px/ft
+  (median 33, longest side ~1000px = SAM native), per-task transforms,
+  runner/verifier/review/deploy made bundle-aware (no fork, G0 defaults
+  intact). Dry-run + QA PASS. bundle_g1b/, G1B_REPORT.md.
+- G1b GPU run (~$0.15, pod jf4uvblse6vyyw, direct-ssh ship again, pod
+  terminated): Small+Large on crops, both verified 421 checks PASS
+  (NOTE: poll's default verify ran against the G0 bundle -> spurious dim
+  errors; re-verify with --bundle bundle_g1b passes).
+- SCOREBOARD (closest-candidate diagnostic vs schedule, after
+  closing+fill_holes+largest-component cleanup): G1 full-strip Large =
+  15/35 <=10%, 26 <=25%. G1b crops SMALL = 20/35 <=10%, 27/35 <=25%
+  (Small BEATS Large on crops: 11/22 for Large). VISUAL: 204 now a
+  true wall-following room shape (was the shape-failure case), 101
+  correct incl. interior RR block carve-out but leaks through windows
+  into landscaping (trimmable). Crops fix confirmed as the dominant lever.
+  Results: results_gpu(_large)/ = G1b; results_gpu_g1_full(_large)/ = G1.
+  Scoring artifacts: g1b_cleaned_best.json, qa_g1b/cleaned_*.png.
+- ARM 3 launched (Nick's idea, in-house, no OpenAI key): 4 Opus vision
+  agents (one per level) outline the same crops per the label book,
+  polygon px + per-edge rationale + confidence ->
+  data/sam_smoke/24-06748-RNVS/claude_vision/level_0*.json. Independent
+  of SAM results by instruction. Pending completion -> convert to
+  results-schema, same grader, 3-way review cards, winners ->
+  proposals_for_editor.json for the /v2/annotate editor.
+- Nick reframe (product insight, adopted): the bottleneck is not drawing
+  speed but boundary KNOWLEDGE — proposals exist to teach where lines
+  go; Nick learns over 5-10 projects; bulk-accept + stratified audit is
+  the human gate (page-pilot pattern). Machine agreement stays evidence,
+  never truth.
+
+## Bake-off v1 verdict (2026-07-17 early, Fable session close)
+- ARM 3 (Claude vision, Nick's idea) = primary proposal-engine candidate:
+  one-shot 15/35 <=10% / 29/35 <=25% vs schedule, NO selection problem
+  (SAM arms' better buckets require best-of-9 vs the answer key — product
+  can't do that; SAM's own-score pick = 1/35). Crisp 4-7 vertex polygons
+  on wall faces (107 GARAGE 0.4% err, 204 clean incl. diagonal wall);
+  calibrated confidence (low-conf rooms ARE the failures: 305/306/307
+  open-plan clipped by crops, 104, 209A). Full table + verdicts:
+  data/sam_smoke/24-06748-RNVS/BAKEOFF_V1.md.
+- SAM crops arm retained as independent cross-check (vision+SAM agreement
+  = candidate auto-gate). SAM full-sheet retired. Small > Large on crops.
+- Editor preload LIVE: results/proposals_for_editor.json = 35
+  claude_vision_v1 polygons in PDF coords (transform validated 0.001pt).
+  /v2/annotate/24-06748-RNVS should now offer them as starting shapes.
+- Nick's approval-loop vision (proposals -> confidence gate -> Telegram
+  card -> tap = append-only human decision -> retrain on RunPod) adopted
+  as the product spine; spec draft owed:
+  PROPOSAL_APPROVAL_LOOP_V1_DRAFT.md. Gate must be earned (cross-arm
+  agreement + mechanical checks + measured precision), never model
+  self-confidence.
+- Session total spend ~$0.65 of $15. NEXT HUMAN GATES: label-book answers
+  (+2 new Qs: elevator shafts, undrawn deck splits) + Codex review;
+  editor visual sign-off; review arm-3 proposals in editor. NEXT DRIVER
+  WORK: approval-loop spec; open-zone crops fix (level-viewport context
+  for open plans); then dev-portfolio expansion per GEOMETRY_REBOOT_V1.
