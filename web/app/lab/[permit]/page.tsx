@@ -1,85 +1,124 @@
-// TEMP ML workbench, single project: source PDFs, kept-pages PDF, overlay
-// gallery with per-room status, report link, editor link. Interim surface.
+// TEMP ML workbench — single project. Rebuilt 2026-07-17 to mirror the LOCKED
+// process (docs/pilot/FULL_PROCESS_LOCKED.md). Three parts:
+//   (a) the 4-button row (Full plan set PDF / Trimmed plans images /
+//       Pipeline report / Room editor);
+//   (b) REVIEW QUEUE — the star: measured surfaces awaiting an S8 decision;
+//   (c) SURFACES grouped by measured verdict (gate output; pre-measurement
+//       fallback for projects the gate has not reached yet).
+//
+// FOUNDER CAVEAT: functional slice, no invented polish — pending founder visual
+// sign-off. Projects shown by ADDRESS, never permit number.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadProject, projectName } from "@/lib/lab";
-import fs from "fs";
-import path from "path";
+import { loadProjectDetail, loadReviewQueue, loadSurfaceGroups } from "@/lib/lab";
+import LabReviewQueue from "@/components/LabReviewQueue";
 
 export const dynamic = "force-dynamic";
 
 export default async function LabProject({ params }: { params: Promise<{ permit: string }> }) {
   const { permit } = await params;
-  const p = loadProject(permit);
-  if (!p) return notFound();
-  const hasEditor = fs.existsSync(
-    path.join(process.cwd(), "..", "data", "geometry_annotations", `${permit}.geometry_annotation_packet_v1.json`),
-  );
-  const keptDir = path.join(process.cwd(), "..", "data", "sam_smoke", permit, "kept_pages");
-  const keptPages = fs.existsSync(keptDir)
-    ? fs.readdirSync(keptDir).filter((x) => /^page_[0-9]{2}\.png$/.test(x)).map((x) => x.slice(5, 7)).sort()
-    : [];
+  const detail = loadProjectDetail(permit);
+  if (!detail) return notFound();
+  const queue = loadReviewQueue(permit);
+  const surfaces = loadSurfaceGroups(permit);
   const f = (kind: string, name = "") =>
     `/api/lab/file?permit=${permit}&kind=${kind}${name ? `&name=${name}` : ""}`;
+
   return (
     <div className="container">
       <div className="page-head">
-        <h1>{projectName(permit)}</h1>
-        <p><Link href="/lab">← workbench</Link></p>
+        <h1>{detail.name}</h1>
+        <p>
+          <Link href="/lab">← workbench</Link> · {detail.blurb}
+        </p>
       </div>
+
+      {/* (a) the four buttons — images for humans, PDFs one-click downloads */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-        {p.docs.length > 0 && (
-          <a className="btn" href={f("doc", p.docs[0])} target="_blank">Full plan set (PDF)</a>
+        {detail.activeDoc && (
+          <a className="btn" href={f("doc", detail.activeDoc)} target="_blank">
+            Full plan set (PDF)
+          </a>
         )}
-        {keptPages.length > 0 && (
-          <Link className="btn" href={`/lab/${permit}/pages`}>Trimmed plans (images)</Link>
+        {detail.hasKeptImages && (
+          <Link className="btn" href={`/lab/${permit}/pages`}>
+            Trimmed plans (images)
+          </Link>
         )}
-        {p.report && <a className="btn" href={f("report")} target="_blank">Pipeline report</a>}
-        {hasEditor && <Link className="btn" href={`/v2/annotate/${permit}`}>Room editor</Link>}
+        {detail.hasReport && (
+          <a className="btn" href={f("report")} target="_blank">
+            Pipeline report
+          </a>
+        )}
+        {detail.hasEditor && (
+          <Link className="btn" href={`/v2/annotate/${permit}`}>
+            Room editor
+          </Link>
+        )}
       </div>
-      {(["unresolved", "repaired", "pass", null] as const).map((group) => {
-        const rooms = p.rooms.filter((r) => r.inspection === group);
-        if (rooms.length === 0) return null;
-        const heads: Record<string, [string, string]> = {
-          unresolved: ["Needs your judgment", "the inspector could not settle these — human call required"],
-          repaired: ["Repaired — check the fix", "pink = original edge, green = repaired; judge the green line"],
-          pass: ["Passed inspection", "every edge machine-verified; still proposals until you lock"],
-          none: ["Not yet inspected", "drafts only — the edge inspector has not run here"],
-        };
-        const [title, sub] = heads[group ?? "none"];
-        return (
-          <section key={group ?? "none"}>
-            <h2 style={{ marginTop: 24 }}>{title} ({rooms.length})</h2>
-            <p style={{ fontSize: 13, opacity: 0.75 }}>{sub}</p>
+
+      {/* (b) REVIEW QUEUE — S5.5 measured surfaces -> S8 human decision */}
+      <section>
+        <h2 style={{ marginTop: 26 }}>Review queue</h2>
+        <p style={{ fontSize: 13, opacity: 0.75 }}>
+          Measured surfaces awaiting your decision. Each is a confirmed-reference call — confirm + accept, reject the
+          reference, flag for judgment, or skip with a note.
+        </p>
+        {queue.present ? (
+          <LabReviewQueue permit={permit} items={queue.items} />
+        ) : (
+          <p style={{ opacity: 0.7 }}>Measuring gate not yet run (no edge_gate_full/QUEUE.json for this project).</p>
+        )}
+      </section>
+
+      {/* (c) SURFACES grouped by measured verdict */}
+      <section>
+        <h2 style={{ marginTop: 30 }}>Surfaces by verdict</h2>
+        <p style={{ fontSize: 13, opacity: 0.75 }}>
+          {surfaces.source === "gate"
+            ? "Grouped by the measured verdict from the edge gate."
+            : surfaces.source === "fallback"
+              ? "Pre-measurement view — the edge gate has not run here; grouped by draft inspection / proposal signal."
+              : "No surface artifacts yet."}
+        </p>
+        {surfaces.groups.map((g) => (
+          <div key={g.verdict}>
+            <h3 style={{ marginTop: 18 }}>
+              {g.title} ({g.cards.length})
+            </h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginTop: 8 }}>
-              {rooms.map((r) => {
-                const img = group === "repaired" && r.repairImage ? f("repair", r.code)
-                  : group === "unresolved" ? f("inspect", r.code)
-                  : r.overlay ? f("overlay", r.code) : null;
+              {g.cards.map((c) => {
+                const proof = c.proofImages[0] ? f("proof", c.proofImages[0]) : c.overlayCode ? f("overlay", c.overlayCode) : null;
                 return (
-                  <div key={r.code} className="permit-card" style={{ cursor: "default" }}>
+                  <div key={c.id} className="permit-card" style={{ cursor: "default" }}>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                      <strong>{r.code}</strong>
-                      {r.outcome && <span className="chip">{r.outcome}</span>}
-                      {r.inspection && <span className="chip">{r.inspection === "pass" ? "edges verified" : r.inspection}</span>}
-                      {r.decision && <span className="chip">{r.decision}</span>}
+                      <strong>{c.identities.join(" · ") || c.id}</strong>
+                      {c.spaceName && <span style={{ fontSize: 12, opacity: 0.7 }}>{c.spaceName}</span>}
+                      {c.worstDeviationIn != null && <span className="chip">worst {c.worstDeviationIn.toFixed(1)} in</span>}
+                      {c.decision && <span className="chip code">{c.decision.decision}</span>}
                     </div>
-                    {img ? (
-                      <a href={img} target="_blank">
+                    {c.reason && <p style={{ fontSize: 12, opacity: 0.75, margin: "6px 0 0" }}>{c.reason}</p>}
+                    {proof ? (
+                      <a href={proof} target="_blank" rel="noreferrer">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img} alt={`room ${r.code}`} loading="lazy"
-                             style={{ width: "100%", marginTop: 8, borderRadius: 8, border: "1px solid var(--line)" }} />
+                        <img
+                          src={proof}
+                          alt={`surface ${c.id}`}
+                          loading="lazy"
+                          style={{ width: "100%", marginTop: 8, borderRadius: 8, border: "1px solid var(--line)" }}
+                        />
                       </a>
                     ) : (
-                      <p style={{ marginTop: 8 }}>no image</p>
+                      <p style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>no proof image yet</p>
                     )}
                   </div>
                 );
               })}
             </div>
-          </section>
-        );
-      })}
+          </div>
+        ))}
+        {surfaces.groups.length === 0 && <p style={{ opacity: 0.7 }}>Nothing to show yet.</p>}
+      </section>
     </div>
   );
 }

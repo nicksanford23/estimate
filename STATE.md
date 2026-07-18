@@ -1217,3 +1217,23 @@ and `python3 scripts/pipeline.py board`.
   Baronne surfaces (consolidated per surface, per locked S3/S5.2) ->
   founder session -> bank + Calhoun -> label book A8 reconciliation ->
   skill rewrite to match locked process.
+
+## Baronne fully measured under locked process (2026-07-17 night, Fable)
+- Factory run complete (agent): scale gate VERIFIED all 4 viewports
+  (~+0.6% plot expansion, inside 2% gate; founder countersign pending);
+  36 identities -> 33 surfaces (1 open-plan merge, 1 deck merge, 4
+  stairs, 4 shafts, 23 rooms); 22 ordinary surfaces / 98 edges measured:
+  57 pass_measured, 14 minor, 22 major_redraw, 5 unresolved_evidence.
+  QUEUE: 4 confirm+accept, 13 fix_edge, 5 needs_judgment (+8
+  needs_founder specialty/shaft, 2 wrong_surface_model redraws, 1 no-
+  proposal). Gate patches CONFIRMED: 206 chase-jump fixed (now honest
+  unresolved), 404/405 exterior over-calls now ambiguous-pending-reviewer
+  (draft was 0.67in from OUTER edge — old 11.3in was the over-call).
+  Artifacts: edge_gate_full/ (gate_results, QUEUE.json, REPORT, 120
+  proofs), scale_gate.json, surfaces.json; new scripts scale_gate.py,
+  consolidate_surfaces.py, edge_gate.py --full. Skill rewritten to locked
+  process. Workbench /lab rebuilt to constitution (queue + decide API,
+  S8 records with process version stamp).
+- NEXT: founder session — countersign scale, work the 22-surface queue,
+  judge the 8 specialty/shaft + 2 redraws; then bank + Calhoun same
+  treatment; then eligible-surface counter starts.

@@ -66,6 +66,28 @@ def raw_segments(doc, pi):
     return list(seen.values())
 
 
+def _union_len(intervals, lo, hi):
+    """Total covered length of [a,b] intervals clipped to [lo,hi] (1-D union)."""
+    clipped = []
+    for a, b in intervals:
+        a2, b2 = max(a, lo), min(b, hi)
+        if b2 > a2:
+            clipped.append((a2, b2))
+    if not clipped:
+        return 0.0
+    clipped.sort()
+    total = 0.0
+    cs, ce = clipped[0]
+    for a, b in clipped[1:]:
+        if a <= ce:
+            ce = max(ce, b)
+        else:
+            total += ce - cs
+            cs, ce = a, b
+    total += ce - cs
+    return total
+
+
 def unit_normal(p1, p2):
     d = np.array(p2, float) - np.array(p1, float)
     L = float(np.linalg.norm(d))
@@ -94,9 +116,57 @@ def point_to_segment_dist(p, s1, s2):
     return float(np.linalg.norm(p - proj))
 
 
+# ---- wall-assembly detection (double-line pairs) — for chase guard + exterior --
+def detect_assemblies(edge_p1, edge_p2, all_segs, ctx):
+    """Every complete wall/edge assembly near the proposal edge: a pair of long
+    parallel segments 3-12 in apart, both overlapping the edge span. Each returns
+    signed offsets (n.mid - c) of both members + the near/far member segments.
+    Offsets are along the edge normal; interior_sign>0 points at the room."""
+    u, n, c = ctx["u"], ctx["n"], ctx["c"]
+    lo, hi = ctx["lo"], ctx["hi"]
+    cos_tol = math.cos(math.radians(PARALLEL_TOL_DEG))
+    min_len = CAND_MIN_LEN_FT * PT_PER_FT
+    pair_lo, pair_hi = PAIR_MIN_IN / IN_PER_PT, PAIR_MAX_IN / IN_PER_PT
+    lines = []
+    for s1, s2, sL in all_segs:
+        if sL < min_len:
+            continue
+        su, _, _ = unit_normal(s1, s2)
+        if abs(float(u @ su)) < cos_tol:
+            continue
+        if seg_overlap_frac(edge_p1, edge_p2, s1, s2, u, lo, hi) < 0.30:
+            continue
+        smid = (np.array(s1, float) + np.array(s2, float)) / 2
+        off = float(n @ smid) - c
+        if abs(off) > (PERP_MAX_IN + PAIR_MAX_IN) / IN_PER_PT:
+            continue
+        lines.append((off, (tuple(s1), tuple(s2)), sL))
+    lines.sort(key=lambda t: t[0])
+    asm = []
+    for i in range(len(lines)):
+        for j in range(i + 1, len(lines)):
+            sep = abs(lines[j][0] - lines[i][0])
+            if pair_lo <= sep <= pair_hi:
+                a, b = lines[i], lines[j]
+                near, far = (a, b) if abs(a[0]) <= abs(b[0]) else (b, a)
+                asm.append(dict(near_off=near[0], far_off=far[0],
+                                near_seg=near[1], far_seg=far[1],
+                                sep_in=sep * IN_PER_PT,
+                                dist_in=abs(near[0]) * IN_PER_PT))
+    asm.sort(key=lambda d: d["dist_in"])
+    return asm
+
+
 # ---- candidate scoring: which vector segment is the room-facing boundary ------
 def classify_candidates(edge_p1, edge_p2, centroid, all_segs):
-    """Return sorted candidate dicts (best first) for one proposal edge."""
+    """Return sorted candidate dicts (best first) for one proposal edge.
+
+    Reference-selection rules (patched per EDGE_GATE_PROTOTYPE_REPORT failure
+    modes): (a) CHASE-JUMP GUARD — a candidate is invalid when a COMPLETE wall
+    assembly (parallel pair 3-12 in apart) lies strictly between the proposal edge
+    and the candidate; the room-facing member of the FIRST assembly encountered
+    moving outward from the edge is strongly preferred. (b) pair partner segments
+    are exposed so the caller can apply the exterior-edge rule."""
     u, n, L = unit_normal(edge_p1, edge_p2)
     c = float(n @ np.array(edge_p1, float))
     lo = min(float(np.array(edge_p1) @ u), float(np.array(edge_p2) @ u))
@@ -126,15 +196,49 @@ def classify_candidates(edge_p1, edge_p2, centroid, all_segs):
         ang = math.degrees(math.acos(min(1.0, cosang)))
         cands.append(dict(s1=tuple(s1), s2=tuple(s2), L=sL, perp_pt=perp,
                           signed_off=signed_off, overlap=ovf, angle=ang, smid=smid))
+    ctx = dict(u=u, n=n, c=c, lo=lo, hi=hi, mid=mid_edge,
+               interior_sign=interior_sign, L=L)
     if not cands:
-        return [], dict(u=u, n=n, c=c, lo=lo, hi=hi, mid=mid_edge,
-                        interior_sign=interior_sign, L=L)
+        return [], ctx
+
+    assemblies = detect_assemblies(edge_p1, edge_p2, all_segs, ctx)
+    ctx["assemblies"] = assemblies
+    first_asm = assemblies[0] if assemblies else None
+
+    # (a) NEAR-FACE aggregation for the chase-jump guard. A room-facing boundary
+    # is often drawn as FRAGMENTED short segments (niche/jog faces) that each fail
+    # the candidate overlap filter, while the only CONTINUOUS parallel line is a
+    # wall 4-8 in outward across a chase. Aggregate the fragmented near face: if
+    # short parallel segments hug the edge (just-inside to NEAR_IN outward) and
+    # together cover >=25% of the edge, any candidate that sits clearly BEYOND
+    # that near face (a gap outward) has jumped a chase.
+    near_pt = 3.5 / IN_PER_PT
+    gap_pt = 1.0 / IN_PER_PT
+    edge_span = hi - lo
+    near_intervals = []
+    near_max_out = 0.0
+    for s1, s2, sL in all_segs:
+        su, _, _ = unit_normal(s1, s2)
+        if abs(float(u @ su)) < cos_tol:
+            continue
+        smid = (np.array(s1, float) + np.array(s2, float)) / 2
+        d_out = -(float(n @ smid) - c) * interior_sign      # >0 == outward from room
+        if -1.0 / IN_PER_PT <= d_out <= near_pt:
+            a = float(np.array(s1) @ u); b = float(np.array(s2) @ u)
+            near_intervals.append((min(a, b), max(a, b)))
+            near_max_out = max(near_max_out, d_out)
+    near_cov = _union_len(near_intervals, lo, hi) / edge_span if edge_span > 1e-9 else 0.0
+    near_face = near_cov >= 0.25
+    ctx["near_face_cov"] = round(near_cov, 2)
 
     # detect double-line wall pairs among candidates + all long segs
     long_segs = [s for s in all_segs if s[2] >= min_len]
     pair_lo, pair_hi = PAIR_MIN_IN / IN_PER_PT, PAIR_MAX_IN / IN_PER_PT
+    between_tol = 1.5 / IN_PER_PT               # slack so a member isn't "between" itself
+    off_match = 1.0 / IN_PER_PT                 # offset tolerance to match an assembly member
     for cd in cands:
         partner = None
+        partner_seg = None
         for s1, s2, sL in long_segs:
             su, _, _ = unit_normal(s1, s2)
             if abs(float(u @ su)) < cos_tol:
@@ -144,10 +248,39 @@ def classify_candidates(edge_p1, edge_p2, centroid, all_segs):
             sep = abs(off - cd["signed_off"])
             if pair_lo <= sep <= pair_hi and seg_overlap_frac(edge_p1, edge_p2, s1, s2, u, lo, hi) > 0.3:
                 partner = off
+                partner_seg = (tuple(s1), tuple(s2))
                 break
         cd["has_pair"] = partner is not None
+        cd["partner_off"] = partner
+        cd["partner_seg"] = partner_seg
         # room-facing member of a pair = the one further toward interior
         cd["is_room_face"] = bool(partner is not None and cd["signed_off"] * interior_sign >= partner * interior_sign)
+        # (a) CHASE-JUMP GUARD: invalid if a COMPLETE assembly lies strictly
+        # between the edge (offset 0) and this candidate on the same side.
+        o = cd["signed_off"]
+        jumped = False
+        jump_reason = None
+        for asm in assemblies:
+            m1, m2 = asm["near_off"], asm["far_off"]
+            same_side = (m1 * o > 0) and (m2 * o > 0)
+            inside = (abs(m1) < abs(o) - between_tol) and (abs(m2) < abs(o) - between_tol)
+            if same_side and inside:
+                jumped = True
+                jump_reason = "a complete wall pair lies between the edge and this line"
+                break
+        # near-face variant: candidate sits clearly beyond a fragmented near face
+        d_out = -o * interior_sign
+        if not jumped and near_face and d_out > near_max_out + gap_pt and d_out > gap_pt:
+            jumped = True
+            jump_reason = (f"a room-facing near boundary ({int(near_cov*100)}% edge "
+                           "coverage) lies between the edge and this line across a chase/gap")
+        cd["chase_jumped"] = jumped
+        cd["jump_reason"] = jump_reason
+        # is this the room-facing (near) member of the FIRST assembly?
+        cd["is_first_asm_face"] = bool(
+            first_asm is not None and abs(o - first_asm["near_off"]) <= off_match)
+        cd["is_first_asm_far"] = bool(
+            first_asm is not None and abs(o - first_asm["far_off"]) <= off_match)
         # ink mass around candidate (walls sit in dense linework; dim lines don't)
         r = 9.0 / IN_PER_PT
         ink = sum(1 for a, b, _ in all_segs
@@ -160,15 +293,23 @@ def classify_candidates(edge_p1, edge_p2, centroid, all_segs):
         s = cd["perp_pt"]                                   # prefer close
         s -= 0.4 * min(cd["L"], 4 * PT_PER_FT)              # prefer long
         s -= 3.0 * cd["overlap"]                            # prefer full overlap
-        if cd["is_room_face"]:
+        flags = []
+        if cd["is_first_asm_face"]:
+            s -= 20.0                                       # STRONGEST: near face of first wall
+            flags.append("room-side face of the FIRST wall assembly from the edge")
+        elif cd["is_room_face"]:
             s -= 12.0                                       # strong: room-side wall face
         elif cd["has_pair"]:
             s += 6.0                                        # outer face of a wall pair
-        flags = []
-        if cd["is_room_face"]:
+        if cd["is_room_face"] and not cd["is_first_asm_face"]:
             flags.append("room-side face of parallel line-pair")
-        elif cd["has_pair"]:
+        elif cd["has_pair"] and not cd["is_first_asm_face"]:
             flags.append("outer face of parallel line-pair (penalized)")
+        if cd["chase_jumped"]:
+            s += 40.0                                       # (a) reached past a near boundary
+            flags.append("CHASE-JUMP: " + (cd.get("jump_reason") or
+                         "a wall assembly lies between the edge and this line") +
+                         " -> not the room-facing boundary")
         if cd["ink"] < 4 and not cd["has_pair"]:
             s += 30.0                                       # isolated -> dimension/extension
             flags.append("isolated/low-ink -> likely dimension/extension line")
@@ -184,12 +325,18 @@ def classify_candidates(edge_p1, edge_p2, centroid, all_segs):
             flags.append(f"angle off {cd['angle']:.1f}deg")
         cd["score"] = s
         cd["flags"] = flags
-        cd["penalized"] = any("likely" in f for f in flags)
+        cd["penalized"] = any("likely" in f for f in flags) or cd["chase_jumped"]
 
-    cands.sort(key=lambda d: d["score"])
-    ctx = dict(u=u, n=n, c=c, lo=lo, hi=hi, mid=mid_edge,
-               interior_sign=interior_sign, L=L)
-    return cands, ctx
+    # (a) prefer NON-jumped candidates: only fall back to jumped lines if a
+    # near-side reference does not exist, and then mark them unresolved.
+    valid = [cd for cd in cands if not cd["chase_jumped"]]
+    pool = valid if valid else cands
+    if not valid:
+        for cd in pool:
+            if cd["chase_jumped"] and "chase-jump: no near-side reference" not in cd["flags"]:
+                cd["flags"].append("chase-jump: no near-side reference found -> reference unresolved")
+    pool.sort(key=lambda d: d["score"])
+    return pool, ctx
 
 
 def measure(edge_p1, edge_p2, ctx, ref):
@@ -257,7 +404,8 @@ def render_clip(doc, pi, bbox_pdf, zoom):
 
 
 def edge_proof(doc, pi, code, idx, edge_p1, edge_p2, chosen, runner, max_dev,
-               verdict, curve_pts=None):
+               verdict, curve_pts=None, outdir=None):
+    outdir = outdir or OUTDIR
     pad = 36.0
     xs = [edge_p1[0], edge_p2[0]]; ys = [edge_p1[1], edge_p2[1]]
     for r in (chosen, runner):
@@ -287,13 +435,18 @@ def edge_proof(doc, pi, code, idx, edge_p1, edge_p2, chosen, runner, max_dev,
     grn = "green dots = boundary polyline" if curve_pts else "green = chosen reference"
     d.text((5, img.height - 60), "magenta = proposal edge", fill=(255, 0, 190), font=font(15))
     d.text((5, img.height - 42), grn, fill=(0, 220, 0), font=font(15))
-    d.text((5, img.height - 24), "yellow = runner-up", fill=(230, 200, 0), font=font(15))
-    p = os.path.join(OUTDIR, f"proof_{code}_e{idx}.png")
+    if "ambiguous" in verdict:
+        d.text((5, img.height - 24), "yellow = OUTER edge (both shown; reviewer picks)",
+               fill=(230, 200, 0), font=font(15))
+    else:
+        d.text((5, img.height - 24), "yellow = runner-up", fill=(230, 200, 0), font=font(15))
+    p = os.path.join(outdir, f"proof_{code}_e{idx}.png")
     img.save(p)
     return os.path.relpath(p, ROOT)
 
 
-def room_proof(doc, pi, code, poly, chosen_refs):
+def room_proof(doc, pi, code, poly, chosen_refs, outdir=None):
+    outdir = outdir or OUTDIR
     pad = 48.0
     xs = [p[0] for p in poly]; ys = [p[1] for p in poly]
     bbox = (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
@@ -308,7 +461,7 @@ def room_proof(doc, pi, code, poly, chosen_refs):
         d.line([to_px(poly[i]), to_px(poly[(i + 1) % len(poly)])], fill=(255, 0, 190), width=3)
     d.rectangle([0, 0, img.width, 30], fill=(0, 0, 0))
     d.text((5, 4), f"ROOM {code}: magenta=proposal  green=chosen refs", fill=(255, 255, 255), font=font(20))
-    p = os.path.join(OUTDIR, f"proof_{code}_room.png")
+    p = os.path.join(outdir, f"proof_{code}_room.png")
     img.save(p)
     return os.path.relpath(p, ROOT)
 
@@ -341,10 +494,13 @@ def polygon_centroid(poly):
     return [cx / (6 * a), cy / (6 * a)]
 
 
-def infer_boundary_type(code, is_curved, chosen, no_ref, is_split):
+EXTERIOR_CODES = {"404", "405"}     # prototype rerun: decks -> exterior edges
+
+
+def infer_boundary_type(code, is_curved, chosen, no_ref, is_split, is_exterior):
     if is_split:
         return "open_split"
-    if code in ("404", "405"):
+    if is_exterior:
         return "exterior" if not no_ref else "unresolved"
     if no_ref:
         return "unresolved"
@@ -353,7 +509,7 @@ def infer_boundary_type(code, is_curved, chosen, no_ref, is_split):
     return "wall"
 
 
-def verdict_for(max_dev, chosen, no_ref, is_split, code):
+def verdict_for(max_dev, chosen, no_ref, is_split):
     if no_ref:
         # invented split / open floor with no physical line -> wrong_surface_model
         if is_split:
@@ -368,131 +524,202 @@ def verdict_for(max_dev, chosen, no_ref, is_split, code):
     return "major_redraw"
 
 
+def cand_from_seg(seg, e1, e2, ctx, flags):
+    """Build a candidate-like dict from a raw (s1,s2) segment for a given edge."""
+    s1, s2 = seg
+    su, _, _ = unit_normal(s1, s2)
+    ang = math.degrees(math.acos(min(1.0, abs(float(ctx["u"] @ su)))))
+    smid = (np.array(s1, float) + np.array(s2, float)) / 2
+    signed_off = float(ctx["n"] @ smid) - ctx["c"]
+    return dict(s1=tuple(s1), s2=tuple(s2), L=math.dist(s1, s2),
+                perp_pt=abs(signed_off), signed_off=signed_off,
+                overlap=seg_overlap_frac(e1, e2, s1, s2, ctx["u"], ctx["lo"], ctx["hi"]),
+                angle=ang, smid=smid, flags=flags, penalized=False,
+                has_pair=True, is_room_face=False)
+
+
+def exterior_pair(e1, e2, ctx):
+    """(b) EXTERIOR-EDGE RULE support: from the first wall/edge assembly, return
+    (inner structural line, outer edge line) as candidate dicts. Inner = the
+    interior/deck-side member; outer = the outboard member. None if no pair."""
+    asm = ctx.get("assemblies") or []
+    if not asm:
+        return None, None
+    a = asm[0]
+    isign = ctx["interior_sign"]
+    if a["near_off"] * isign >= a["far_off"] * isign:
+        inner_seg, outer_seg = a["near_seg"], a["far_seg"]
+    else:
+        inner_seg, outer_seg = a["far_seg"], a["near_seg"]
+    inner = cand_from_seg(inner_seg, e1, e2, ctx,
+                          ["exterior INNER structural line (deck/building side)"])
+    outer = cand_from_seg(outer_seg, e1, e2, ctx,
+                          ["exterior OUTER edge/parapet line"])
+    return inner, outer
+
+
+def evaluate_surface(doc, pi, code, poly, outdir, *, is_exterior=False,
+                     split_other_poly=None, curved_diag=False, space_name=None,
+                     surface_id=None, identities=None):
+    """Run reference selection + measurement + verdict + proof for every edge of
+    one surface polygon. Returns a surface result dict. Shared by the prototype
+    rerun (main) and the full consolidated run (run_full)."""
+    if pi not in _SEG_CACHE:
+        _SEG_CACHE[pi] = raw_segments(doc, pi)
+    all_segs = _SEG_CACHE[pi]
+    cen = polygon_centroid(poly)
+    n = len(poly)
+    edge_records = []
+    chosen_refs = []
+    for i in range(n):
+        e1 = poly[i]; e2 = poly[(i + 1) % n]
+        u, nrm, L = unit_normal(e1, e2)
+        is_curved = bool(curved_diag and abs(u[0]) > 0.1 and abs(u[1]) > 0.1)
+
+        # invented-split detection (deck rectangles): midpoint on the shared band
+        is_split = False
+        if split_other_poly is not None:
+            oxs = [p[0] for p in split_other_poly]; oys = [p[1] for p in split_other_poly]
+            mid = ((e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2)
+            if min(oxs) - 2 <= mid[0] <= max(oxs) + 2 and min(oys) - 2 <= mid[1] <= max(oys) + 2:
+                is_split = True
+
+        cands, ctx = classify_candidates(e1, e2, cen, all_segs)
+        chosen = cands[0] if cands else None
+        runner = cands[1] if len(cands) > 1 else None
+        curve_pts = []
+        curve_dev = None
+        ext_ambiguous = False
+        ext_inner = ext_outer = None
+        dev_inner = dev_outer = None
+
+        edge_exterior = bool(is_exterior and not is_split)
+
+        if is_curved:
+            curve_dev, curve_pts = curve_chord_dev(e1, e2, ctx, all_segs)
+
+        if is_curved and curve_dev is not None:
+            no_ref = False
+            max_dev = mean_dev = round(curve_dev, 2)
+            ep = max(min(math.dist(e1, p) for p in curve_pts),
+                     min(math.dist(e2, p) for p in curve_pts)) * IN_PER_PT
+            ang = None
+        elif edge_exterior and chosen is not None:
+            # (b) EXTERIOR-EDGE RULE: do not guess inner vs outer parapet line.
+            ext_inner, ext_outer = exterior_pair(e1, e2, ctx)
+            if ext_inner is not None:
+                ext_ambiguous = True
+                chosen, runner = ext_inner, ext_outer
+                mi = measure(e1, e2, ctx, ext_inner)
+                mo = measure(e1, e2, ctx, ext_outer)
+                dev_inner, dev_outer = round(mi[0], 2), round(mo[0], 2)
+                max_dev, mean_dev, ep, ang = mi          # display vs inner
+            else:
+                # single exterior line, no drawn outer edge -> still reviewer's call
+                ext_ambiguous = True
+                no_ref = False
+                max_dev, mean_dev, ep, ang = measure(e1, e2, ctx, chosen)
+            no_ref = False
+        elif chosen is not None:
+            no_ref = False
+            max_dev, mean_dev, ep, ang = measure(e1, e2, ctx, chosen)
+        else:
+            no_ref = True
+            max_dev = mean_dev = ep = ang = None
+
+        btype = infer_boundary_type(code, is_curved, chosen, no_ref, is_split, edge_exterior)
+        eff_no_ref = no_ref or (is_split and (chosen is None or not chosen.get("has_pair", False)
+                                              and chosen.get("perp_pt", 99) * IN_PER_PT > MINOR_IN))
+        verd = verdict_for(max_dev if max_dev is not None else 99.0,
+                           chosen, eff_no_ref, is_split)
+        if ext_ambiguous:
+            verd = "ambiguous_pending_reviewer"
+
+        use_curve = bool(is_curved and curve_dev is not None)
+        rationale = build_rationale(chosen, runner, no_ref, is_split, use_curve,
+                                    curve_dev, ext_ambiguous, dev_inner, dev_outer)
+        proof = edge_proof(doc, pi, code, i, e1, e2,
+                           None if use_curve else chosen,
+                           None if use_curve else runner,
+                           max_dev, verd, curve_pts if use_curve else None, outdir)
+        chosen_refs.append(None if use_curve else chosen)
+
+        rec = {
+            "edge_index": i,
+            "edge_p1_pdf": [round(x, 2) for x in e1],
+            "edge_p2_pdf": [round(x, 2) for x in e2],
+            "boundary_type": btype,
+            "reference_segment_pdf": (
+                None if (use_curve or chosen is None) else
+                [[round(x, 2) for x in chosen["s1"]],
+                 [round(x, 2) for x in chosen["s2"]]]),
+            "reference_curve_polyline_pdf": (curve_pts if use_curve else None),
+            "reference_rationale": rationale,
+            "max_deviation_in": (None if max_dev is None else round(max_dev, 2)),
+            "endpoint_deviation_in": (None if ep is None else round(ep, 2)),
+            "angle_curve_deviation": (
+                {"kind": "curve_chord", "value_in": round(curve_dev, 2)} if use_curve
+                else {"kind": "angle_deg", "value_deg": (None if ang is None else round(ang, 2))}),
+            "proof_image": proof,
+            "runner_up_segment_pdf": (None if runner is None else
+                                      [[round(x, 2) for x in runner["s1"]],
+                                       [round(x, 2) for x in runner["s2"]]]),
+            "mean_deviation_in": (None if mean_dev is None else round(mean_dev, 2)),
+            "candidate_count": len(cands),
+            "is_curved_edge": bool(is_curved),
+            "is_invented_split": bool(is_split),
+            "exterior_ambiguous": bool(ext_ambiguous),
+            "exterior_inner_ref_pdf": (None if ext_inner is None else
+                                       [[round(x, 2) for x in ext_inner["s1"]],
+                                        [round(x, 2) for x in ext_inner["s2"]]]),
+            "exterior_outer_ref_pdf": (None if ext_outer is None else
+                                       [[round(x, 2) for x in ext_outer["s1"]],
+                                        [round(x, 2) for x in ext_outer["s2"]]]),
+            "max_dev_vs_inner_in": dev_inner,
+            "max_dev_vs_outer_in": dev_outer,
+            "chase_jumped_runner": bool(runner is not None and runner.get("chase_jumped")),
+            "verdict": verd,
+        }
+        edge_records.append(rec)
+
+    room_pr = room_proof(doc, pi, code, poly, chosen_refs, outdir)
+    return {
+        "surface_id": surface_id or code, "code": code,
+        "identities": identities or [code], "space_name": space_name,
+        "page_index": pi, "room_proof_image": room_pr,
+        "edges": edge_records,
+        "note": "AREA is diagnostic-only and is NOT part of any verdict.",
+    }
+
+
+_SEG_CACHE = {}
+
+
 def main():
     os.makedirs(OUTDIR, exist_ok=True)
     tasks = snap.load_tasks(PERMIT)
     doc = fitz.open(snap.PDF[PERMIT])
     polys, srcs = load_best_polys()
-    seg_cache = {}
 
     results = {}
     order = ["102", "206", "304", "404", "405"]
     for code in order:
         t = tasks[code]
-        pi = t["page_index"]
-        if pi not in seg_cache:
-            seg_cache[pi] = raw_segments(doc, pi)
-        all_segs = seg_cache[pi]
-        poly = polys[code]
-        cen = polygon_centroid(poly)
-        n = len(poly)
-
-        # split detection for 404/405 (shared invented division line)
         other = "405" if code == "404" else ("404" if code == "405" else None)
+        res = evaluate_surface(
+            doc, t["page_index"], code, polys[code], OUTDIR,
+            is_exterior=(code in EXTERIOR_CODES),
+            split_other_poly=(polys[other] if other else None),
+            curved_diag=(code == "304"),
+            space_name=t.get("space_name"))
+        res["task_id"] = t["task_id"]
+        res["sheet"] = t.get("sheet_number")
+        res["polygon_source"] = srcs[code]
+        res["polygon_pdf"] = [[round(x, 2) for x in p] for p in polys[code]]
+        results[code] = res
+        v = [e["verdict"] for e in res["edges"]]
+        print(f"{code} ({t.get('space_name')}): {len(res['edges'])} edges -> {v}")
 
-        edge_records = []
-        chosen_refs = []
-        for i in range(n):
-            e1 = poly[i]; e2 = poly[(i + 1) % n]
-            u, nrm, L = unit_normal(e1, e2)
-            is_curved = bool(code == "304" and abs(u[0]) > 0.1 and abs(u[1]) > 0.1)
-
-            # is this edge the 404/405 shared split? (faces the other deck polygon)
-            is_split = False
-            if other is not None:
-                op = polys[other]
-                oxs = [p[0] for p in op]; oys = [p[1] for p in op]
-                mid = ((e1[0] + e2[0]) / 2, (e1[1] + e2[1]) / 2)
-                # midpoint sits on the shared boundary band between the two deck rects
-                if min(oxs) - 2 <= mid[0] <= max(oxs) + 2 and min(oys) - 2 <= mid[1] <= max(oys) + 2:
-                    is_split = True
-
-            cands, ctx = classify_candidates(e1, e2, cen, all_segs)
-            chosen = cands[0] if cands else None
-            runner = cands[1] if len(cands) > 1 else None
-            curve_pts = []
-            curve_dev = None
-
-            if is_curved:
-                # curved diagonal of 304: measure chord-to-curve against the
-                # boundary polyline (primary reference), not a straight line.
-                curve_dev, curve_pts = curve_chord_dev(e1, e2, ctx, all_segs)
-
-            if is_curved and curve_dev is not None:
-                no_ref = False
-                max_dev = mean_dev = round(curve_dev, 2)
-                # endpoint dev: nearest boundary point to each chord endpoint
-                ep = max(min(math.dist(e1, p) for p in curve_pts),
-                         min(math.dist(e2, p) for p in curve_pts)) * IN_PER_PT
-                ang = None
-            elif chosen is not None:
-                no_ref = False
-                max_dev, mean_dev, ep, ang = measure(e1, e2, ctx, chosen)
-            else:
-                no_ref = True
-                max_dev = mean_dev = ep = ang = None
-
-            btype = infer_boundary_type(code, is_curved, chosen, no_ref, is_split)
-            # split edges: even if a stray line matched, mark as wrong_surface_model
-            # only when there's no real physical division (checked: no wall-pair)
-            eff_no_ref = no_ref or (is_split and (chosen is None or not chosen.get("has_pair", False)
-                                                  and chosen.get("perp_pt", 99) * IN_PER_PT > MINOR_IN))
-            verd = verdict_for(max_dev if max_dev is not None else 99.0,
-                               chosen, eff_no_ref, is_split, code)
-
-            use_curve = bool(is_curved and curve_dev is not None)
-            rationale = build_rationale(chosen, runner, no_ref, is_split,
-                                        use_curve, curve_dev)
-            proof = edge_proof(doc, pi, code, i, e1, e2,
-                               None if use_curve else chosen,
-                               None if use_curve else runner,
-                               max_dev, verd, curve_pts if use_curve else None)
-            chosen_refs.append(None if use_curve else chosen)
-
-            rec = {
-                "edge_index": i,
-                "edge_p1_pdf": [round(x, 2) for x in e1],
-                "edge_p2_pdf": [round(x, 2) for x in e2],
-                # --- 7-field consensus record ---
-                "boundary_type": btype,
-                "reference_segment_pdf": (
-                    None if (use_curve or chosen is None) else
-                    [[round(x, 2) for x in chosen["s1"]],
-                     [round(x, 2) for x in chosen["s2"]]]),
-                "reference_curve_polyline_pdf": (curve_pts if use_curve else None),
-                "reference_rationale": rationale,
-                "max_deviation_in": (None if max_dev is None else round(max_dev, 2)),
-                "endpoint_deviation_in": (None if ep is None else round(ep, 2)),
-                "angle_curve_deviation": (
-                    {"kind": "curve_chord", "value_in": round(curve_dev, 2)} if use_curve
-                    else {"kind": "angle_deg", "value_deg": (None if ang is None else round(ang, 2))}),
-                "proof_image": proof,
-                # --- supporting fields ---
-                "runner_up_segment_pdf": (None if runner is None else
-                                          [[round(x, 2) for x in runner["s1"]],
-                                           [round(x, 2) for x in runner["s2"]]]),
-                "mean_deviation_in": (None if mean_dev is None else round(mean_dev, 2)),
-                "candidate_count": len(cands),
-                "is_curved_edge": bool(is_curved),
-                "is_invented_split": bool(is_split),
-                "verdict": verd,
-            }
-            edge_records.append(rec)
-
-        room_pr = room_proof(doc, pi, code, poly, chosen_refs)
-        results[code] = {
-            "task_id": t["task_id"], "space_name": t.get("space_name"),
-            "page_index": pi, "sheet": t.get("sheet_number"),
-            "polygon_source": srcs[code],
-            "polygon_pdf": [[round(x, 2) for x in p] for p in poly],
-            "room_proof_image": room_pr,
-            "edges": edge_records,
-            "note": "AREA is diagnostic-only and is NOT part of any verdict.",
-        }
-        v = [e["verdict"] for e in edge_records]
-        print(f"{code} ({t.get('space_name')}): {len(edge_records)} edges -> {v}")
-
-    # ---- topology prototype: 404/405 overlap + shared invented split ----------
     topo = topology_404_405(polys)
     results["_topology_404_405"] = topo
     print("\n404/405 overlap:", topo["overlap_area_sf_DIAGNOSTIC"], "sf (diagnostic);",
@@ -504,12 +731,202 @@ def main():
     write_report(results, srcs)
 
 
-def build_rationale(chosen, runner, no_ref, is_split, use_curve, curve_dev):
+# ---- FULL RUN over consolidated ordinary surfaces (Task 4) -------------------
+FULL_OUTDIR = os.path.join(ROOT, "data", "sam_smoke", PERMIT, "edge_gate_full")
+CURVED_CODES = {"304"}          # only the RESTROOM has a drawn curved wall
+
+SEV_ORDER = {                   # higher = worse (drives queue ranking)
+    "pass_measured": 0, "minor_adjustment": 1, "ambiguous_pending_reviewer": 2,
+    "unresolved_evidence": 3, "major_redraw": 4, "wrong_surface_model": 5}
+
+
+def _eff_dev(e):
+    """A single representative deviation for an edge (best-case for ambiguous)."""
+    if e["exterior_ambiguous"] and e["max_dev_vs_inner_in"] is not None \
+            and e["max_dev_vs_outer_in"] is not None:
+        return min(e["max_dev_vs_inner_in"], e["max_dev_vs_outer_in"])
+    return e["max_deviation_in"]
+
+
+def _action_for(verdicts):
+    if any(v in ("wrong_surface_model", "unresolved_evidence",
+                 "ambiguous_pending_reviewer") for v in verdicts):
+        return "needs_judgment"
+    if any(v in ("major_redraw", "minor_adjustment") for v in verdicts):
+        return "fix_edge"
+    return "confirm_reference_and_accept"
+
+
+def run_full():
+    os.makedirs(FULL_OUTDIR, exist_ok=True)
+    doc = fitz.open(snap.PDF[PERMIT])
+    surf = json.load(open(os.path.join(ROOT, "data", "sam_smoke", PERMIT,
+                                       "surfaces.json")))
+    by_id = {s["surface_id"]: s for s in surf["surfaces"]}
+    ordinary = surf["ordinary_measurable_surface_ids"]
+
+    results = {}
+    queue = []
+    metrics = {"surfaces_measured": 0, "edges_total": 0,
+               "pass_measured": 0, "minor_adjustment": 0, "major_redraw": 0,
+               "ambiguous_pending_reviewer": 0, "unresolved_evidence": 0,
+               "wrong_surface_model": 0}
+    for sid in ordinary:
+        s = by_id[sid]
+        code = s["identity_memberships"][0]
+        pi = s["page_index"]
+        poly = s["geometry_pdf"]
+        res = evaluate_surface(
+            doc, pi, code, poly, FULL_OUTDIR,
+            is_exterior=False, split_other_poly=None,
+            curved_diag=(code in CURVED_CODES),
+            space_name=s["identity_names"][0],
+            surface_id=sid, identities=s["identity_memberships"])
+        res["sheet"] = s["sheet"]
+        res["surface_kind"] = s["surface_kind"]
+        results[sid] = res
+
+        verdicts = [e["verdict"] for e in res["edges"]]
+        metrics["surfaces_measured"] += 1
+        metrics["edges_total"] += len(verdicts)
+        for v in verdicts:
+            metrics[v] = metrics.get(v, 0) + 1
+        worst = max(verdicts, key=lambda v: SEV_ORDER.get(v, 0))
+        devs = [_eff_dev(e) for e in res["edges"] if _eff_dev(e) is not None]
+        worst_dev = round(max(devs), 2) if devs else None
+        action = _action_for(verdicts)
+        proofs = [e["proof_image"] for e in res["edges"]] + [res["room_proof_image"]]
+        # one-line reason
+        nverd = {v: verdicts.count(v) for v in set(verdicts) if v != "pass_measured"}
+        if action == "confirm_reference_and_accept":
+            reason = (f"all {len(verdicts)} edges pass_measured (<=1.5 in); reviewer "
+                      "confirms the machine-nominated references, then accept.")
+        else:
+            parts = ", ".join(f"{n}x {v}" for v, n in sorted(
+                nverd.items(), key=lambda kv: -SEV_ORDER.get(kv[0], 0)))
+            reason = (f"worst edge {worst} (eff dev {worst_dev} in); {parts}. "
+                      + ("reviewer must set/confirm reference or surface model."
+                         if action == "needs_judgment"
+                         else "snap the flagged edge(s) to the confirmed reference."))
+        queue.append({
+            "surface_id": sid, "identities": s["identity_memberships"],
+            "space_names": s["identity_names"], "sheet": s["sheet"],
+            "verdict": worst, "worst_edge_dev_in": worst_dev,
+            "action_needed": action, "one_line_reason": reason,
+            "proof_images": proofs,
+            "_rank": SEV_ORDER.get(worst, 0) * 1000 + (worst_dev or 0),
+        })
+        print(f"{sid} ({s['identity_names'][0]}): {verdicts} -> {action}")
+
+    queue.sort(key=lambda q: -q["_rank"])
+    for q in queue:
+        del q["_rank"]
+
+    gate_out = {
+        "permit": PERMIT, "gate": "S5.5 measured edge gate (patched selection)",
+        "scale_source": "S1.7 scale_gate.json (verified_machine, founder countersign pending)",
+        "canonical_unit": "physical_surface_region",
+        "skipped": {
+            "note": ("specialty_stair, shaft, and wrong_surface_model surfaces are NOT "
+                     "measured here (per Task 4 + S5.2). See surfaces.json."),
+            "surface_ids": [s["surface_id"] for s in surf["surfaces"]
+                            if s["surface_id"] not in ordinary],
+        },
+        "metrics": metrics,
+        "surfaces": results,
+    }
+    json.dump(gate_out, open(os.path.join(FULL_OUTDIR, "gate_results.json"), "w"), indent=1)
+    json.dump({"permit": PERMIT,
+               "ranked_by": "severity then worst edge deviation",
+               "action_legend": {
+                   "confirm_reference_and_accept": "all edges pass; confirm references + accept",
+                   "fix_edge": "snap flagged edge(s) to the confirmed reference (S6)",
+                   "needs_judgment": "reference/surface-model unresolved; reviewer decides"},
+               "queue": queue},
+              open(os.path.join(FULL_OUTDIR, "QUEUE.json"), "w"), indent=1)
+    write_full_report(gate_out, queue, surf)
+    print("\nmetrics:", metrics)
+    print("queue by action:",
+          {a: sum(1 for q in queue if q["action_needed"] == a)
+           for a in ("needs_judgment", "fix_edge", "confirm_reference_and_accept")})
+    print("wrote", FULL_OUTDIR)
+
+
+def write_full_report(gate_out, queue, surf):
+    m = gate_out["metrics"]
+    L = ["# Edge Gate — FULL RUN (patched) — 24-06748-RNVS\n"]
+    A = L.append
+    A("Reference-confirmed measured edge gate (FULL_PROCESS_LOCKED.md S5.5) run across "
+      f"ALL {m['surfaces_measured']} consolidated ORDINARY surfaces (S5.2 "
+      "surface-model gate first). Specialty stairs, elevator shafts, and "
+      "wrong_surface_model merges (great-room 305/306/307, deck 404/405) are NOT "
+      "measured here — they route to founder judgment / structural redraw.\n")
+    A("Scale from S1.7 `scale_gate.json`: all four viewports verified_machine "
+      "(founder countersign pending). AREA IS NEVER AN ACCEPTANCE GATE.\n")
+    A("Denominators (S5.2): "
+      f"{surf['denominators']['identity_count']} room identities -> "
+      f"{surf['denominators']['surface_count']} physical surfaces; "
+      f"{m['surfaces_measured']} ordinary measurable.\n")
+    A("## Gate metrics (edges)\n")
+    A(f"- edges measured: **{m['edges_total']}** across {m['surfaces_measured']} surfaces")
+    A(f"- pass_measured: **{m['pass_measured']}**")
+    A(f"- minor_adjustment: **{m['minor_adjustment']}**")
+    A(f"- major_redraw: **{m['major_redraw']}**")
+    A(f"- unresolved_evidence: **{m['unresolved_evidence']}**")
+    A(f"- ambiguous_pending_reviewer: **{m['ambiguous_pending_reviewer']}**")
+    A(f"- wrong_surface_model (edge-level): **{m['wrong_surface_model']}**\n")
+    qa = {a: sum(1 for q in queue if q["action_needed"] == a)
+          for a in ("needs_judgment", "fix_edge", "confirm_reference_and_accept")}
+    A("## Founder review queue (ranked by severity)\n")
+    A(f"Queue size: **{len(queue)}** surfaces — needs_judgment "
+      f"**{qa['needs_judgment']}**, fix_edge **{qa['fix_edge']}**, "
+      f"confirm_reference_and_accept **{qa['confirm_reference_and_accept']}**.\n")
+    A("| # | surface | identities | sheet | worst verdict | worst dev (in) | action | reason |")
+    A("|---|---|---|---|---|---|---|---|")
+    for i, q in enumerate(queue, 1):
+        ids = ",".join(q["identities"])
+        A(f"| {i} | {q['surface_id']} | {ids} | {q['sheet']} | {q['verdict']} | "
+          f"{q['worst_edge_dev_in']} | {q['action_needed']} | "
+          f"{q['one_line_reason'].replace('|', '/')} |")
+    A("\nFull per-edge records (chosen + runner-up reference, rationale, proofs): "
+      "`gate_results.json`. Machine review queue: `QUEUE.json`.\n")
+    A("## LIMITATIONS (honest)\n")
+    A("- These are MACHINE observations. Every reference is machine-NOMINATED; none is "
+      "human-confirmed truth. Training eligibility requires per-edge reviewer "
+      "confirmation (S5.5 / S8b). Nothing here is training data.")
+    A("- `unresolved_evidence` edges (chase / fragmented near face) have NO "
+      "machine-confirmable reference; the deviation shown is against a rejected line and "
+      "must not be trusted — the reviewer sets the reference.")
+    A("- 1:1 ordinary surfaces still inherit the draft polygon's own errors; a "
+      "`major_redraw` means the DRAFT edge is off, not necessarily that the wall is "
+      "unfindable. Proof images are the evidence.")
+    A("- Curved / fixture-dense edges (304 RESTROOM) use chord-to-polyline deviation, "
+      "which is noise-prone; confirm visually.")
+    A("- Scale is verified_machine only (founder countersign pending); a founder scale "
+      "rejection invalidates every inch-based verdict here (dependency invalidation §3.5).")
+    p = os.path.join(FULL_OUTDIR, "REPORT.md")
+    open(p, "w").write("\n".join(L))
+    print("wrote", p)
+
+
+def build_rationale(chosen, runner, no_ref, is_split, use_curve, curve_dev,
+                    ext_ambiguous=False, dev_inner=None, dev_outer=None):
     if use_curve:
         return ("curved edge measured as a straight chord against the room-facing "
                 "boundary polyline (outer-side vector points within a 9 in band, "
                 f"interior fixtures excluded); chord-to-curve max dev {curve_dev:.1f} in. "
                 "Fixture-dense restroom -> confirm the green points trace the wall in the proof.")
+    if ext_ambiguous:
+        if dev_inner is not None and dev_outer is not None:
+            return ("EXTERIOR edge (deck/parapet): the true decking boundary is "
+                    "ambiguous between the INNER structural line (green) and the "
+                    f"OUTER edge/parapet line (yellow). Proposal deviates {dev_inner} in "
+                    f"from inner, {dev_outer} in from outer. NOT auto-scored -> "
+                    "ambiguous_pending_reviewer; a qualified reviewer confirms which "
+                    "line bounds the flooring. Both shown in the proof.")
+        return ("EXTERIOR edge (deck/parapet): only a single drawn line is present; "
+                "whether the flooring runs to it or to an undrawn outer edge is a "
+                "reviewer call -> ambiguous_pending_reviewer.")
     if no_ref:
         if is_split:
             return ("No parallel vector line within 12 in over >=30% of this edge: "
@@ -517,19 +934,25 @@ def build_rationale(chosen, runner, no_ref, is_split, use_curve, curve_dev):
                     "(invented split).")
         return "No qualifying vector line within 12 in / >=30% overlap; no defensible reference."
     parts = []
-    if chosen.get("is_room_face"):
+    if chosen.get("is_first_asm_face"):
+        parts.append("chosen line is the room-side face of the FIRST wall assembly "
+                     "encountered moving outward from the edge (chase-jump guard)")
+    elif chosen.get("is_room_face"):
         parts.append("chosen line is the room-side member of a detected parallel line-pair (wall/edge)")
     elif chosen.get("has_pair"):
         parts.append("chosen line pairs with a parallel line 3-12 in away (double-line wall/edge)")
     else:
         parts.append("chosen is the closest long parallel line in dense linework")
     parts.append(f"perp {chosen['perp_pt']*IN_PER_PT:.1f} in, overlap {chosen['overlap']*100:.0f}%, "
-                 f"len {chosen['L']/PT_PER_FT:.1f} ft, local-ink {chosen['ink']}")
+                 f"len {chosen['L']/PT_PER_FT:.1f} ft, local-ink {chosen.get('ink', '?')}")
     if chosen.get("flags"):
         parts.append("flags: " + "; ".join(chosen["flags"]))
-    if runner is not None:
+    if runner is not None and "score" in chosen and "score" in runner:
         d = abs(chosen["score"] - runner["score"])
-        parts.append(f"runner-up score margin {d:.1f} ({'CLEAR' if d > 5 else 'CLOSE - verify in proof'})")
+        margin = f"runner-up score margin {d:.1f} ({'CLEAR' if d > 5 else 'CLOSE - verify in proof'})"
+        if runner.get("chase_jumped"):
+            margin += " [runner-up rejected by chase-jump guard]"
+        parts.append(margin)
     return "; ".join(parts)
 
 
@@ -561,16 +984,18 @@ def topology_404_405(polys):
 def write_report(results, srcs):
     L = []
     A = L.append
-    A("# Edge Gate Prototype Report — 24-06748-RNVS (disputed rooms)\n")
-    A("Deterministic measured edge gate per consensus spec "
-      "`docs/pilot/CLAUDE_ADJUDICATION_3WAY_AUDIT_V1.md` §6. Scope: 5 disputed rooms "
-      "(102, 206, 304, 404, 405) ONLY — a prototype so three reviewers can verify the "
-      "reference-line SELECTION in the proof images before this is trusted at scale.\n")
+    A("# Edge Gate Prototype Report — 24-06748-RNVS (disputed rooms) — PATCHED RERUN\n")
+    A("Deterministic measured edge gate per FULL_PROCESS_LOCKED.md S5.5 (was consensus "
+      "spec `docs/pilot/CLAUDE_ADJUDICATION_3WAY_AUDIT_V1.md` §6). Scope: 5 disputed "
+      "rooms (102, 206, 304, 404, 405). This rerun uses the PATCHED reference selection: "
+      "(a) CHASE-JUMP GUARD and (b) EXTERIOR-EDGE RULE, added to fix the two "
+      "reference-selection failure modes the first prototype found. Before/after below.\n")
     A("Scale: 18 pt/ft (1/4\"=1'-0\"), so 1 in = 1.5 pt. Verdict taxonomy: "
       "`pass_measured` (max dev <= 1.5 in), `minor_adjustment` (<= 4 in), "
       "`major_redraw` (> 4 in or no defensible reference), `wrong_surface_model` "
       "(no plausible physical reference — crosses open floor), `unresolved_evidence` "
-      "(only penalized/ambiguous candidates).\n")
+      "(only penalized/chase-jumped candidates; reviewer must set the reference), "
+      "`ambiguous_pending_reviewer` (exterior inner-vs-outer edge; both shown).\n")
     A("**AREA IS NOT AN ACCEPTANCE GATE** and appears nowhere below except the "
       "404/405 topology diagnostic footnote (§6.1 of the spec).\n")
     for code in ["102", "206", "304", "404", "405"]:
@@ -609,44 +1034,61 @@ def write_report(results, srcs):
       "signal, not a failure of the gate.")
     A("- Endpoint deviation flags edges that overrun the reference segment (e.g. a wall "
       "line shorter than the traced edge across a door opening).")
-    A("\n### Self-verification (Claude read the rendered proofs — 8 images)\n")
-    A("Claude opened and judged whether the CHOSEN green reference is visibly the "
-      "room-facing boundary. Finding wrong selections IS the prototype succeeding.\n")
-    A("**Correct selections confirmed:**\n")
-    A("- `proof_102_room.png` — green references sit on the room-facing INNER faces "
-      "of all four RR1 walls; the 1.4 in top / 0.4 in side deviations are the "
-      "finish-thickness-scale offsets under dispute, not real errors. 102 passes.")
-    A("- `proof_206_e0.png` (top) — green on the inner face of the top exterior wall; "
-      "magenta 2.3 in inside it. Correct reference, honest minor deviation.")
-    A("- `proof_304_e1/e2.png` + `proof_304_room.png` — the green boundary dots trace "
-      "the inner face of the curved RESTROOM wall and the magenta proposal chords "
-      "visibly CUT INSIDE that curve by ~6-8 in. The `major_redraw` verdicts are real; "
-      "this vindicates the Codex \"curve needs redraw\" call and refutes \"curve "
-      "defensible.\" (A few green dots land on adjacent fixture/wall lines — noise — "
-      "but max deviation is driven by the genuine gap.)")
-    A("- `proof_404_e2.png` / `proof_405_e0.png` — magenta runs across open wood-deck "
-      "hatch with NO drawn line; `wrong_surface_model` is the correct signal for the "
-      "invented 404/405 split.\n")
-    A("**Wrong / questionable selections found (reference-selection failures):**\n")
-    A("- `proof_206_e1.png` (right edge) — the green reference JUMPED ACROSS the narrow "
-      "ELECT chase onto the far wall's inner face, ~4.7 in from the magenta edge. The "
-      "proposal deliberately traced the near ELECT-niche face (per its boundary note). "
-      "The gate's line is NOT the laundry-facing boundary; this `major_redraw` is a GATE "
-      "OVER-CALL from reaching past a thin chase. A human must confirm the near niche "
-      "face is the intended edge.")
-    A("- `proof_404_e1.png` (11.3 in) and `proof_405_e1.png` (7.6 in) — exterior deck "
-      "edges drawn as a parapet/railing double-line. The gate chose the INNER structural "
-      "line; the proposal traced the OUTER edge. Which line is the true decking boundary "
-      "is genuinely ambiguous, so these `major_redraw` magnitudes are likely OVER-CALLS "
-      "pending an exterior-parapet-edge rule. Flag; do not trust the number yet.\n")
-    A("Net: selection is reliable for clean double-line interior walls (102, 206 top, "
-      "304 bottom/side) and for detecting invented splits; it is NOT yet reliable across "
-      "thin chases (206 right) or on exterior parapet double-lines (404/405 right), where "
-      "it can pick the wrong member and manufacture a large deviation.\n")
+    A("\n## PATCH before/after — the two proven failure modes\n")
+    A("The first prototype (unpatched) found two reference-selection failures. The "
+      "patched gate corrects both. Verified against the regenerated proofs.\n")
+    A("| failure mode | edge | UNPATCHED (before) | PATCHED (after) | why the after is right |")
+    A("|---|---|---|---|---|")
+    A("| Chase jump | 206 e1 | chose the continuous wall 4.7 in OUTWARD across the ELECT "
+      "chase; scored `major_redraw` @ 4.68 in (a confident over-call against the wrong "
+      "line) | `unresolved_evidence`; the across-chase wall is rejected by the CHASE-JUMP "
+      "guard (a room-facing near boundary covers ~70% of the edge between it and the "
+      "wall), and no near-side reference is machine-confirmable | the laundry boundary is "
+      "the fragmented near niche face, not the wall behind the chase. With no confident "
+      "near reference, `unresolved_evidence` (reviewer must set the reference) is the "
+      "mandated verdict, not a fabricated number. |")
+    A("| Exterior parapet | 404 e1 | chose the INNER structural line; `major_redraw` @ "
+      "11.33 in | `ambiguous_pending_reviewer`; BOTH inner (11.33 in) and outer (0.67 in) "
+      "shown | the proposal actually traced the OUTER deck edge (0.67 in). Inner-vs-outer "
+      "is a genuine reviewer decision; guessing inner manufactured an 11 in over-call. |")
+    A("| Exterior parapet | 405 e1 | chose the INNER line; `major_redraw` @ 7.63 in | "
+      "`ambiguous_pending_reviewer`; inner 7.63 in / outer 4.37 in shown | same rule; "
+      "no auto-guess between the two drawn parapet lines. |")
+    A("\nConfirmations (this rerun): 206 e1 no longer jumps the ELECT chase "
+      "(major_redraw over-call -> unresolved_evidence); 404 e1 and 405 e1 are now "
+      "`ambiguous_pending_reviewer`, not over-calls. 102 stays 4/4 `pass_measured` "
+      "(guard did not over-fire); 304 curved-wall `major_redraw`s unchanged (real).\n")
+    A("### How the patch works\n")
+    A("- (a) CHASE-JUMP GUARD: a candidate is invalid if a complete wall pair (two "
+      "parallel lines 3-12 in apart) lies between the proposal edge and the candidate, "
+      "OR — for fragmented near faces that fail the per-segment overlap filter — if an "
+      "aggregated room-facing near boundary (>=25% edge coverage within 3.5 in) sits "
+      "between the edge and the candidate across a gap. The gate prefers the room-facing "
+      "line of the FIRST wall assembly moving outward; if the only surviving line is "
+      "across a chase, the edge is `unresolved_evidence`, never a confident number.")
+    A("- (b) EXTERIOR-EDGE RULE: on an exterior (deck/parapet) edge the gate does NOT "
+      "guess inner vs outer. It emits BOTH candidates (inner structural line + outer "
+      "edge line), records the deviation to each, marks the edge "
+      "`ambiguous_pending_reviewer`, and draws both in the proof (green=inner, "
+      "yellow=outer) for the reviewer to confirm.")
+    A("\n### Remaining limitations (honest)\n")
+    A("- Where a near face is genuinely undrawable in vectors (206 e1), the machine "
+      "cannot pick the reference; it correctly defers to the reviewer rather than "
+      "snapping. This is the locked S5.5 per-edge-confirmation requirement, not a gate "
+      "failure.")
+    A("- 304's curved RESTROOM wall is a short-segment polyline interleaved with fixture "
+      "linework (no true bezier); chord-to-curve deviation is noise-prone and must be "
+      "confirmed visually. `major_redraw` there is driven by a genuine 6-8 in gap.")
+    A("- The exterior rule assumes a two-line parapet/railing assembly. A single-line "
+      "exterior edge is still marked ambiguous (reviewer confirms whether flooring runs "
+      "to it), but only one candidate can be shown.")
     p = os.path.join(OUTDIR, "EDGE_GATE_PROTOTYPE_REPORT.md")
     open(p, "w").write("\n".join(L))
     print("wrote", p)
 
 
 if __name__ == "__main__":
-    main()
+    if "--full" in sys.argv:
+        run_full()
+    else:
+        main()

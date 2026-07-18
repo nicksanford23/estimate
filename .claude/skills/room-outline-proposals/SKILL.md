@@ -5,87 +5,103 @@ description: Generate machine room-outline proposals for a complete project (cro
 
 # Room-outline proposal pipeline
 
-Turns a complete project plan set into per-room outline PROPOSALS loaded
-into the /v2 annotate editor. Proposals are machine observations — Nick's
-editor confirmation is the only thing that makes training truth. Never
-skip that sentence when explaining status.
+Turns a complete plan set into per-surface outline PROPOSALS and routes them
+through the locked measured gate to human review. Proposals are MACHINE
+observations; only a qualified reviewer's per-edge confirmation makes training
+truth. Never skip that sentence when explaining status.
 
-## Proven results (24-06748-RNVS, BAKEOFF_V1.md)
+**Authority: `docs/pilot/FULL_PROCESS_LOCKED.md` (v1.0).** This skill is the
+operational recipe for its S1-S10 project flow + T-LOOP/M1-LOOP; if this file
+and the locked doc ever disagree, the locked doc wins. Read STATE.md first.
 
-Claude-vision one-shot: 29/35 rooms within 25% of schedule (15 within
-10%), crisp 4-7 vertex wall-face polygons, calibrated confidence. SAM 2.1
-Small on the same crops: different failure modes, useful as independent
-cross-check only (its own score cannot select; full-sheet feeding is
-retired). Cost: vision ≈ subscription tokens; SAM ≈ $0.15 GPU.
+## The canonical unit is the SURFACE, not the room
+One continuous open floor is ONE physical_surface_region with room identities
+as MEMBERSHIPS (great-room 305/306/307 = one surface; deck 404/405 = one
+surface). One surface = one geometry decision = one training label, counted
+once; identities counted separately. Two denominators always: identity count
+AND surface count (see `surfaces.json`).
 
-## Pipeline (per project)
+## Project flow (per project) — maps to locked S1-S10
+- **S1 PAGES / S1.5 PLAN-SET MAP** — classify pages; pick active revision;
+  level plans, viewports, schedule capability, roster. Missing members are
+  explicit blockers. Roster = UNION of schedule rows + plan labels.
+- **S1.7 SCALE GATE (blocking)** — `scripts/scale_gate.py`: per viewport record
+  scale + source + >=1 independent dimension check (parse a printed dim, find
+  its vector dimension line, measure the span, compare printed vs measured).
+  Status verified_machine until founder countersign. NO inch measurement passes
+  downstream while a viewport is unverified.
+- **S2 ANCHORS** — room-label text coords from PDF words, whitelisted by roster,
+  INSIDE the proposed-plan viewport. Door-tag rule (proven): room tag = hit with
+  "SF" token directly below; REJECT hits whose right neighbor is "|" (door tags
+  share the numbering). Graphics-only labels -> place visually, mark
+  anchor_provenance=visual_manual; unplaceable -> no_anchor, never dropped.
+- **S3 EVIDENCE PACKET** — one packet PER SURFACE (overlapping/open identities
+  consolidate first). Crop from ORIGINAL PDF (fitz clip), longest side ~1000px,
+  px_per_ft + transforms recorded with round-trip self-test (<0.01pt). Crop
+  borders are never boundary evidence; auto-expand + rerender when an edge nears
+  the border. Open/clipped zones -> use the FULL level viewport as the crop
+  (the 305/306/307 room-sized-crop failure).
+- **S4 DRAFT** — one vision agent per level, background, parallel; apply the
+  GEOMETRY_LABEL_BOOK R1-R11; output ordered polygon in ORIGINAL image px,
+  outcome, per-edge boundary_notes, confidence. IGNORE printed SF (the answer
+  must not shape the proposal). Agents never read SAM (independence).
+- **S5 CRITICIZE** — independent vision pass judges every numbered edge; cross-
+  vendor on disputes/failures + random pass samples.
+- **S5.2 SURFACE-MODEL GATE** — `scripts/consolidate_surfaces.py`: collapse open
+  duplication to one surface; stairs -> specialty_stair, elevators -> shaft
+  (never room rectangles) -> needs_founder; unsupported splits/duplicates ->
+  wrong_surface_model -> S6 structural redraw, BYPASSING measurement.
+- **S5.5 MEASURE (reference-confirmed)** — `scripts/edge_gate.py --full` over the
+  ordinary surfaces. Script NOMINATES the room-facing reference per edge from
+  PDF vectors (parallel/overlap/length + double-line pair detection), records
+  chosen + runner-up + rationale, measures max/mean/endpoint deviation at
+  verified scale, and writes a proof image per edge (proposal magenta, chosen
+  green, runner-up/outer yellow) + per surface. Reference-selection guards:
+  (a) CHASE-JUMP GUARD — reject a candidate when a wall pair (or aggregated
+  fragmented near face) lies between the edge and it; prefer the room-facing
+  line of the FIRST assembly outward; no near ref -> unresolved_evidence.
+  (b) EXTERIOR-EDGE RULE — on deck/parapet edges emit BOTH inner + outer
+  candidates and mark ambiguous_pending_reviewer; never guess.
+  Verdicts: pass_measured (<=1.5in) | minor_adjustment (<=4in) | major_redraw |
+  wrong_surface_model | unresolved_evidence | ambiguous_pending_reviewer.
+- **S6 REPAIR** — snap rejected edges to the CONFIRMED reference; wrong_surface_
+  model needs structural redraw, never snapping. Any coordinate change re-enters
+  the FULL chain S5 -> S5.2 -> S5.5 -> S7. Max 2 rounds, then unresolved.
+- **S7 TOPOLOGY** — floor-level overlaps/gaps/duplicates/shared-edge/unmapped
+  identities; obstruction layer recorded as observed evidence.
+- **S8 HUMAN GATE** — (a) PRODUCT: reviewer accepts/edits/rejects SURFACES ranked
+  by measured severity (`QUEUE.json`: confirm_reference_and_accept | fix_edge |
+  needs_judgment); one shared surface = one decision + one label. (b) TRAINING
+  eligibility only when the full evidence record + per-edge confirmed references
+  pass AND a qualified reviewer decides. Saves append to
+  `data/geometry_annotations/human/<permit>.outcomes.jsonl` — that file, nothing
+  upstream, is truth.
+- **S10 LAYER-B ESTIMATING/EXPORT** — associate finishes with LOCKED surfaces;
+  obstruction/stair/waste policy; takeoff + exceptions + export. Never mutates
+  locked geometry; exceptions raise structured upstream tasks (page->S1, scale->
+  S1.7, identity->S2, geometry->S6, policy->S10) and regenerate under a new
+  version.
 
-0. PREREQS: complete project packet per PROJECT_FIRST_EXECUTION_V1
-   (active revision, all primary level plans, schedule capability, one
-   viewport bbox per level, room roster). Missing members are visible
-   blockers. Roster comes from the schedule when one exists, else from
-   room-label text on the plans. All of it machine-observed until Nick
-   confirms.
-1. ANNOTATION PACKET: scripts/build_geometry_annotation_packet.py
-   --permit <P> (or equivalent) -> one required task per scheduled space.
-2. ANCHORS: room-label text coords from the PDF (fitz words) whitelisted
-   by roster, INSIDE the proposed-plan viewport only. Disambiguation rule
-   (proven): room tag = hit with "SF" token directly below; reject hits
-   whose right neighbor is "|" (door tags share the numbering
-   convention). Labels not in text (graphics) -> place visually (agent
-   Reads the render, iterates crops until confident) and mark
-   anchor_provenance=visual_manual; unplaceable -> status=no_anchor,
-   never silently dropped.
-3. CROPS: scripts/build_sam_smoke_bundle_g1b.py pattern — per-room crop
-   from the ORIGINAL PDF (fitz clip), longest side ~1000px, px_per_ft
-   recorded per task, transforms with round-trip self-test (<0.01pt).
-   KNOWN GAP: open-plan zones get clipped by room-sized crops (305/306/
-   307 failure) — for rooms suspected open (no enclosing walls near
-   anchor), use the full level viewport as the crop instead.
-4. VISION ARM (primary): one Opus agent per level, background, parallel.
-   Prompt contract (copy from the 2026-07-16 session): Read each crop,
-   apply GEOMETRY_LABEL_BOOK rules R1-R11, output ordered polygon in
-   ORIGINAL image pixels (note the Read tool's display-scaling line),
-   outcome, per-edge boundary_notes, confidence 0-1. IGNORE printed SF
-   (hard rule: the answer must not shape the proposal). Unjudgeable ->
-   unresolved + null polygon. Agents must NOT read any SAM results
-   (independence). Output: claude_vision/level_XX.json.
-5. SAM CROSS-CHECK (optional, ~$0.15): deploy_sam_smoke.py deploy
-   --bundle <crops> + poll. OPS: dockerArgs is broken (pods crash-loop);
-   pod boots stock image + PUBLIC_KEY env; account proxy ssh needs the
-   pubkey registered on the CURRENT account — else ship via the pod's
-   DIRECT public ip:port (query pod runtime ports; key
-   ~/.ssh/runpod_ed25519). Poll auto-terminates; verify with --bundle
-   <crops> (default bundle gives spurious dim errors). Cleanup for
-   comparison: binary_closing(9x9) + fill_holes + largest component.
-6. VALIDATE + LOAD: convert polygon px -> PDF via the per-task transform
-   (pdf = px/zoom + crop_origin_pdf); VALIDATE against each task's
-   anchor_px/anchor_pdf pair (<0.1pt or stop). Write
-   results/proposals_for_editor.json {task_id: {code, proposal_source,
-   machine_proposal: true, polygon_pdf, outcome_suggestion, confidence,
-   boundary_notes}}. The /v2/annotate/[permit] editor offers these as
-   starting shapes.
-7. HUMAN GATE: Nick reviews per room in the editor (accept / drag-fix /
-   redraw / unresolved). Saves append to
-   data/geometry_annotations/human/<permit>.outcomes.jsonl — that file is
-   the training truth, nothing upstream of it.
+## Improvement loops (async, never per-project steps)
+- **T-LOOP** (geometry model): training-eligible SURFACE regions (S8b), splits by
+  whole projects AND architect/design families; >=150 eligible surfaces / >=2
+  projects / locked label book -> exploratory bakeoff vs the vector+rented-AI
+  baseline; sealed exam opened ONCE; deployed models replace S4 first (S5 stays
+  independent); rerun output is a draft re-entering S5-S8, never truth by self-
+  agreement.
+- **M1-LOOP** (page router): verified page labels, splits by whole projects;
+  false-negative on important page types is the primary metric; deploy only as a
+  REVERSIBLE routing assistant, source pages untouchable.
 
-## Confidence routing (for the approval loop)
-
-Earned, never felt: agent self-confidence alone is NOT a gate. Candidate
-auto-queue signal = vision confidence >=0.7 AND SAM-cleaned mask agrees
-within tolerance AND mechanical checks pass (closed, contains own label,
-no neighbor overlap, sane area). Everything else -> editor queue.
-Calibrate against Nick's audit outcomes before trusting any threshold.
-
-## Hard rules (inherited, non-negotiable)
-
-- Machine agreement = evidence, never truth. No proposal, however good,
-  becomes training data without Nick's explicit editor/tap decision.
-- Printed schedule SF: diagnostic AFTER prediction only. Never selects a
-  candidate, never sizes a prompt/box/polygon.
-- Projects, not pages: run complete plan sets; every level gets an
-  outcome. Splits stay project-disjoint (GEOMETRY_REBOOT_V1 ladder).
-- Max ~80 rooms per vision agent; one level per agent is the proven unit.
-- Label book gaps found mid-run (new trade question) -> flag for the
-  founder list, mark affected rooms unresolved; never invent a rule.
+## Hard rules (non-negotiable)
+- Machine agreement = evidence, NEVER truth. No proposal becomes training data
+  without an explicit per-edge reviewer decision.
+- AREA IS NEVER AN ACCEPTANCE SIGNAL; printed schedule SF is diagnostic AFTER
+  prediction only — it never selects a candidate or sizes a prompt/box/polygon.
+- Reference eligibility, machine observations, and decisions are APPEND-ONLY;
+  history is never overwritten; every artifact stamps its S4 §-contract fields.
+- Dependency invalidation (§3.5): a changed page/revision/scale/roster/geometry
+  makes all downstream artifacts STALE — resume from the earliest changed stage.
+- Projects, not pages; every surface carries an explicit state
+  (unresolved/no_plan/not_yet_reviewed); hard cases deliberately included; a bad
+  label is worse than a missing one.
