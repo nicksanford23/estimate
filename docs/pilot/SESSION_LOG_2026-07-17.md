@@ -85,3 +85,15 @@ docs/pilot/FULL_PROCESS_V5_DRAFT.md. Codex stated it expects to LOCK next.
 patch edge-gate reference selection (chase/parapet rules), reviewer
 confirmation flow, run all 35 Baronne surfaces, founder session on
 measured surfaces; then bank + Calhoun.
+
+### [8] Baronne fully measured (factory agent complete): scale verified
+4/4 viewports (+0.6% plot stretch, inside gate); 36 identities -> 33
+surfaces; 98 edges: 57 pass / 14 minor / 22 major / 5 unresolved; queue
+live (4 accept / 13 fix / 5 judgment + founder pile). Gate patches
+confirmed on live data (206 chase honest-unresolved; 404 e1 was 0.67in
+from OUTER edge — prior 11.3in over-call proven). Workbench rebuilt to
+constitution. Three founder docs written: MILESTONE_FIRST_MEASURED_
+BUILDING.md, BUSINESS_TIMELINE_AND_PLAN_V1_DRAFT.md (pitch ~3-5 wks,
+model v1 ~4-8 wks, pricing/goals/valuation framing), MODEL_ROADMAP_BY_
+STATION_V1.md (S4 SAM-vs-Mask2Former bakeoff first, S1 router second,
+critic last). All DRAFTs for founder + Codex review.
