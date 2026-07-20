@@ -1,5 +1,4 @@
 "use client";
-import React from "react";
 // TEMP ML workbench — the review queue (the star of the project page). Renders
 // each measured surface awaiting an S8 human decision with proof image(s) and
 // the four decision buttons, POSTing to /api/lab/decide (append-only). Local
@@ -29,32 +28,6 @@ const ACTIONS: { key: string; decision: string; reference_confirmed?: boolean; l
 
 function fileUrl(permit: string, name: string): string {
   return `/api/lab/file?permit=${encodeURIComponent(permit)}&kind=proof&name=${encodeURIComponent(name)}`;
-}
-
-// Aspect-aware proof display: wide strip images render at a readable fixed
-// height and scroll sideways (never squished to card width — unusable on
-// phones); normal/tall images fill the card width. Tap always opens native.
-function ProofImage({ href, alt }: { href: string; alt: string }) {
-  const [wide, setWide] = React.useState(false);
-  return (
-    <a href={href} target="_blank" rel="noreferrer" style={{ display: "block", overflowX: wide ? "auto" : "visible", WebkitOverflowScrolling: "touch" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={href}
-        alt={alt}
-        loading="lazy"
-        onLoad={(e) => {
-          const im = e.currentTarget;
-          if (im.naturalWidth > 0 && im.naturalHeight > 0 && im.naturalWidth / im.naturalHeight > 2.2) setWide(true);
-        }}
-        style={
-          wide
-            ? { height: 240, width: "auto", maxWidth: "none", borderRadius: 8, border: "1px solid var(--line)" }
-            : { width: "100%", borderRadius: 8, border: "1px solid var(--line)" }
-        }
-      />
-    </a>
-  );
 }
 
 export default function LabReviewQueue({ permit, items }: { permit: string; items: QueueItemView[] }) {
@@ -110,9 +83,17 @@ export default function LabReviewQueue({ permit, items }: { permit: string; item
             </div>
             {it.reason && <p style={{ fontSize: 12.5, opacity: 0.8, margin: "6px 0 0" }}>{it.reason}</p>}
             {it.proofImages.length > 0 && (
-              <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {it.proofImages.map((name) => (
-                  <ProofImage key={name} href={fileUrl(permit, name)} alt={name} />
+                  <a key={name} href={fileUrl(permit, name)} target="_blank" rel="noreferrer" style={{ flex: "1 1 140px", minWidth: 0 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={fileUrl(permit, name)}
+                      alt={name}
+                      loading="lazy"
+                      style={{ width: "100%", borderRadius: 8, border: "1px solid var(--line)" }}
+                    />
+                  </a>
                 ))}
               </div>
             )}
