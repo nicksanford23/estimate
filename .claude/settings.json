@@ -1,5 +1,20 @@
 {
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /workspaces/estimate/scripts/tts_capture_hook.py 2>/dev/null || true",
+            "async": true,
+            "timeout": 20,
+            "statusMessage": "Saving reply for listen page"
+          }
+        ]
+      }
+    ]
   }
 }
