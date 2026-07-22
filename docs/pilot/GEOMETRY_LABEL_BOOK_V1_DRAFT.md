@@ -1,3 +1,4 @@
+1
 # Geometry Label Book v1 — DRAFT
 
 Status: **DRAFT — not locked.** Becomes `geometry-label-book-v1` only after

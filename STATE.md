@@ -1,10 +1,11 @@
 # Project State
 
-## Current Goal (updated 2026-07-11)
-V2 era: build the estimator product on the V2 constitution (SCHEMA_V2.md)
-— pilot the 10 buildings, ML architecture roadmap, demo vs Togal.
-Rules: CLAUDE.md. Superseded design docs live in docs/legacy/ (PLAN.md =
-Model-1 design, PRODUCT_UX_V1.md = pre-V2 screens, etc.).
+## Current Goal (updated 2026-07-21)
+Rebuild the geometry station from flooring-boundary meaning outward. Complete
+one understandable, defensible teaching surface (`24-06748-RNVS / 107
+GARAGE`) before bulk geometry review or RunPod training resumes. Current
+colored edge-gate output is diagnostic-only, not approved geometry or training
+truth. Execution lock: `docs/pilot/GEOMETRY_RESET_V2_FIRST_PRINCIPLES.md`.
 
 ## Verified Facts (2026-07-04 evening)
 - DATABASE IS NOW NEON POSTGRES, schema `estimate.*`, via scripts/db.sh.
@@ -1237,3 +1238,53 @@ and `python3 scripts/pipeline.py board`.
 - NEXT: founder session — countersign scale, work the 22-surface queue,
   judge the 8 specialty/shaft + 2 redraws; then bank + Calhoun same
   treatment; then eligible-surface counter starts.
+
+## Geometry first-principles reset (2026-07-21, Codex + founder)
+- Founder could not determine what the colored Room 107 proof represented
+  after an extended walkthrough. This exposed a real product/process defect,
+  not a founder-training problem: the large proof colors a draft using a
+  reference-selection result but does not visibly establish the physical
+  flooring event or the drawing evidence used for measurement.
+- Evidence audit found direct machine disagreement on unchanged Room 107:
+  Claude vision proposed a 4-side rectangle at confidence 0.7; the legacy edge
+  inspector called all 4 sides correct; the later blind audit flagged the east
+  jog; the vector gate called e0 unresolved, e1/e2 major redraw, and e3 pass
+  despite only 34% reference overlap. None is qualified human truth.
+- `docs/pilot/GEOMETRY_RESET_V2_FIRST_PRINCIPLES.md` is now LOCKED FOR
+  EXECUTION and supersedes the geometry proposal/reference/repair/approval
+  portions of the July 17 process. `docs/pilot/FLOORING_BOUNDARY_RULES_V1.md`
+  is the beginner-facing working boundary contract.
+- New order: establish boundary meaning -> agent examines full context and
+  uses geometry tools to investigate all plausible evidence -> independent
+  critic -> correction -> deterministic scale/topology/measurement -> plain
+  before/after -> qualified review. Nearest-line selection can diagnose but
+  can never semantically confirm a boundary.
+- Room 107 teaching data is versioned at
+  `data/sam_smoke/24-06748-RNVS/teaching/room_107_v1.json`; status is
+  `diagnostic_only_not_approved`, `training_eligible=false`.
+- Guided founder UI begins at `/lab/24-06748-RNVS/learn/107`. It shows original
+  evidence, the first draft, every side's claim/uncertainty/next action,
+  machine disagreements, and the remaining correction steps. Raw technical
+  proofs are optional and collapsed.
+- PAUSE: bulk Baronne decisions, downstream building geometry gates, and all
+  RunPod geometry training. RESUME gate: Room 107 corrected, rechecked,
+  understandable to founder, and audited by a qualified flooring estimator;
+  then five straightforward rooms under the identical workflow.
+
+## Account migration prepared (2026-07-22 late, Fable — context ~99%)
+- Nick moving to a new GitHub account (old one out of Codespaces quota).
+- All pipeline data backed up to R2 (187MB tar:
+  claude-repo/backups/data_backup_latest.tar.gz) via
+  scripts/backup_data_r2.py (backup|restore). Truth also in Neon.
+- MIGRATION_NEW_ACCOUNT.md = the runbook: transfer repo ownership ->
+  hand-copy .env -> new Codespace -> restore script -> continue from
+  STATE.md. External services (Neon/R2/RunPod/Telegram/Deepgram) are
+  .env-keyed, unaffected by the account move.
+- Also new since last entry: TTS listen page (tts_server.mjs, port 8899)
+  with clickable Claude-message list; Stop hook auto-captures every
+  Claude reply to data/tts_messages/ (.claude/settings.json).
+- Session close state: garage 107 repaired+accepted (first finished
+  surface); floor maps + stable room directory live on /lab; two gate
+  bugs fixed today (wall-pair 16in ceiling, repaired-polygon staleness).
+- NEXT (new box): verify restore; Nick works Baronne queue (4 accepts,
+  14 fixes, 3 judgment); repair passes; then bank + Calhoun.

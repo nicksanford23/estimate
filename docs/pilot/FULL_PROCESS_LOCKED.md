@@ -1,5 +1,13 @@
 # Full process v5 — LOCK CANDIDATE (round 5)
 
+> **2026-07-21 geometry reset:** The page routing, project map, scale,
+> provenance, topology, estimating, and project-held-out evaluation rules in
+> this document remain active. Its geometry proposal, reference-selection,
+> repair, and approval sequence is superseded by
+> `GEOMETRY_RESET_V2_FIRST_PRINCIPLES.md`. Existing edge-gate results are
+> diagnostic-only and cannot be approved or used for training until reviewed
+> under the flooring-boundary-meaning-first contract.
+
 Written 2026-07-17 (Claude Fable). Supersedes V1-V4 drafts (kept unchanged).
 Both Codex round-4 blockers ACCEPTED and incorporated; dispositions at end. **Codex: respond LOCK or numbered blockers.** Normative rules only;
 execution status lives in STATE.md.

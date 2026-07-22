@@ -1,5 +1,11 @@
 # Project-First Pilot Execution v1
 
+> **2026-07-21 addendum:** Project-first denominators and packet completeness
+> remain locked. Geometry within each project now follows
+> `GEOMETRY_RESET_V2_FIRST_PRINCIPLES.md`: boundary meaning and agentic evidence
+> investigation precede PDF-line measurement. July 17 colored proofs are
+> retained diagnostics, not reviewed labels.
+
 Locked 2026-07-14 after the `24-06748-RNVS` and `14-11290-NEWC`
 walkthroughs.
 

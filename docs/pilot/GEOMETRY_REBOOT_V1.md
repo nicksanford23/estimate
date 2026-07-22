@@ -1,5 +1,10 @@
 # Geometry reboot v1
 
+> **Superseded for current geometry execution on 2026-07-21 by
+> `GEOMETRY_RESET_V2_FIRST_PRINCIPLES.md`.** This document remains historical
+> evidence for the segmentation/SAM experiments and portfolio rules. No mask,
+> polygon, or colored edge-gate output described here is qualified truth.
+
 Locked 2026-07-14 after complete-project testing on `24-06748-RNVS`.
 
 ## Decision

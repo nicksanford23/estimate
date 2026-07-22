@@ -1,6 +1,7 @@
 # ML Roadmap Review - Round 2
 
-*2026-07-11. Terse delta round against `ML_ROADMAP.md` v1.1 and
+*2026-07-11. 
+Terse delta round against `ML_ROADMAP.md` v1.1 and
 `ML_ROADMAP_REVIEW_R1.md`. Governing founder correction for this round:
 Nick does not trust any semantic label, answer key, training input, or review
 judgment from the first ML process because none received human review. This is
@@ -363,7 +364,7 @@ stronger than the roadmap's existing metric-verification debt.*
 
 8. The existing approved screens need a blind/audit state, not replacement
    layouts.
-
+yu
 ## STILL OPEN
 
 1. Founder ratification of the proposed 10-building bootstrap split: 2 rubric
