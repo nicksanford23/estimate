@@ -767,6 +767,15 @@ def run_full():
                                        "surfaces.json")))
     by_id = {s["surface_id"]: s for s in surf["surfaces"]}
     ordinary = surf["ordinary_measurable_surface_ids"]
+    # Repairs override the consolidation snapshot (bug fix 2026-07-22: repairs
+    # written to inspection/repaired_proposals.json were invisible to --full,
+    # which re-measured the stale surfaces.json geometry_pdf forever).
+    rep_path = os.path.join(ROOT, "data", "sam_smoke", PERMIT,
+                            "inspection", "repaired_proposals.json")
+    repaired = {}
+    if os.path.exists(rep_path):
+        for v in json.load(open(rep_path)).values():
+            repaired[v["code"]] = v["polygon_pdf"]
 
     results = {}
     queue = []
@@ -778,7 +787,7 @@ def run_full():
         s = by_id[sid]
         code = s["identity_memberships"][0]
         pi = s["page_index"]
-        poly = s["geometry_pdf"]
+        poly = repaired.get(code, s["geometry_pdf"])
         res = evaluate_surface(
             doc, pi, code, poly, FULL_OUTDIR,
             is_exterior=False, split_other_poly=None,
@@ -787,6 +796,7 @@ def run_full():
             surface_id=sid, identities=s["identity_memberships"])
         res["sheet"] = s["sheet"]
         res["surface_kind"] = s["surface_kind"]
+        res["polygon_source"] = "repaired" if code in repaired else "consolidated"
         results[sid] = res
 
         verdicts = [e["verdict"] for e in res["edges"]]
