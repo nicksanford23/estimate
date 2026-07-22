@@ -38,7 +38,10 @@ PERP_MAX_IN = 12.0
 OVERLAP_MIN = 0.30
 CAND_MIN_LEN_FT = 1.0
 # double-line wall pair separation window
-PAIR_MIN_IN, PAIR_MAX_IN = 3.0, 12.0
+# Ceiling raised 12->16 in (2026-07-20): a 12.02"-thick masonry exterior wall
+# on 600 Baronne missed pair detection by 0.02" and produced a false
+# unresolved. Old-building walls commonly exceed 12".
+PAIR_MIN_IN, PAIR_MAX_IN = 3.0, 16.0
 # verdict thresholds (inches)
 PASS_IN, MINOR_IN = 1.5, 4.0
 
