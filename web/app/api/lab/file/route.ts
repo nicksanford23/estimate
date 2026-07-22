@@ -36,10 +36,14 @@ export async function GET(req: NextRequest) {
     if (!/^[A-Za-z0-9]+$/.test(name)) return new Response("bad name", { status: 400 });
     file = path.join(SMOKE, permit, "claude_vision", `overlay_${name}.png`);
     type = "image/png";
+  } else if (kind === "crop") {
+    if (!/^[A-Za-z0-9]+$/.test(name)) return new Response("bad name", { status: 400 });
+    file = path.join(SMOKE, permit, "bundle_g1b", `crop_${name}.png`);
+    type = "image/png";
   } else if (kind === "proof") {
     // Gate proof images (edge_gate_full preferred, edge_gate prototype fallback).
     // name is a full proof filename; strict whitelist, no traversal possible.
-    if (!/^proof_[A-Za-z0-9_]+\.png$/.test(name)) return new Response("bad name", { status: 400 });
+    if (!/^(proof|review|floormap)_[A-Za-z0-9_]+\.png$/.test(name)) return new Response("bad name", { status: 400 });
     for (const dir of gateProofDirs(permit)) {
       const candidate = path.join(dir, name);
       if (fs.existsSync(candidate)) { file = candidate; break; }

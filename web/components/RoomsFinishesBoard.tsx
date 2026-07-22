@@ -22,7 +22,7 @@ function fieldStr(raw: Record<string, unknown>, key: string): string {
 }
 
 export default function RoomsFinishesBoard({ data }: Props) {
-  const { permit, building, rows, printed_total_sf, extracted_total_sf, legacy_doc_id, pdf_page_index, sheet } = data;
+  const { permit, building, rows, printed_total_sf, extracted_total_sf, onestop_doc_id, pdf_page_index, sheet } = data;
   const [rowState, setRowState] = useState(() => new Map(rows.map((r) => [r.schedule_row_id, r.confirmed])));
   const [selectedId, setSelectedId] = useState<number | null>(rows[0]?.schedule_row_id ?? null);
   const [busy, setBusy] = useState<number | null>(null);
@@ -35,7 +35,11 @@ export default function RoomsFinishesBoard({ data }: Props) {
   const confirmedCount = useMemo(() => [...rowState.values()].filter(Boolean).length, [rowState]);
   const cleanRows = rows.filter((r) => !rowState.get(r.schedule_row_id));
 
-  const pageSrc = legacy_doc_id ? `/api/opspage/${legacy_doc_id}/${pdf_page_index}?w=1100` : null;
+  // Image route fetches the PDF from R2 by the onestop doc id (not the legacy
+  // estimate.document.id), so key the page image on onestop_doc_id.
+  const pageSrc = onestop_doc_id ? `/api/opspage/${onestop_doc_id}/${pdf_page_index}?w=1400` : null;
+  // Full-resolution PNG (no downscale) for reading the dense schedule table.
+  const pageFullSrc = onestop_doc_id ? `/api/opspage/${onestop_doc_id}/${pdf_page_index}` : null;
 
   async function confirmRow(rowId: number) {
     const row = rows.find((r) => r.schedule_row_id === rowId);
@@ -95,12 +99,10 @@ export default function RoomsFinishesBoard({ data }: Props) {
   return (
     <div className="v2board">
       <div className="v2board-main">
-        <div className="page-head" style={{ marginBottom: 8 }}>
-          <a href={`/v2/b/${permit}`} style={{ fontSize: 13 }}>&larr; {building?.building_name ?? permit}</a>
-        </div>
-        <div className="page-head">
-          <h1 style={{ marginBottom: 2 }}>{building?.building_name ?? permit}</h1>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{permit}</span>
+        <div className="page-head" style={{ marginBottom: 0 }}>
+          <a href={`/v2/b/${permit}`} style={{ fontSize: 13 }}>&larr; Overview</a>
+          <h1 style={{ margin: "6px 0 2px" }}>{building?.building_name ?? permit}</h1>
+          <span className="proj-permit" style={{ fontSize: 12 }}>Permit {permit}</span>
         </div>
         <V2Tabs permit={permit} active="rooms" />
 
@@ -117,10 +119,11 @@ export default function RoomsFinishesBoard({ data }: Props) {
                 style={{ objectPosition: `50% ${cropPct}%`, transform: "scale(2.4)" }}
               />
             </div>
-            <div className="rf-pageimg">
+            <a href={pageFullSrc ?? "#"} target="_blank" rel="noopener noreferrer" className="rf-pageimg v2img-open" title="Open the full-resolution schedule in a new tab (pinch/scroll to zoom)">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={pageSrc} alt="source schedule page" />
-            </div>
+              <span className="v2img-openbtn">&#x26F6; Open full schedule</span>
+            </a>
           </div>
         )}
       </div>

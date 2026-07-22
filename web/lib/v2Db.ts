@@ -34,6 +34,39 @@ export async function listPilotBuildings(): Promise<BuildingListRow[]> {
   );
 }
 
+// Project identity for headers/overview (V2_PRODUCT_REBUILD_PLAN_V1.md §4).
+// Display name resolves in priority order elsewhere; here we return the raw
+// pieces. permit_num is an internal key, demoted to subdued metadata in the UI.
+export type ProjectIdentity = {
+  permit_num: string;
+  building_name: string | null;
+  address_raw: string | null;
+  city_description: string | null;
+  city_sqft: number | null;
+  doc_count: number;
+  page_count: number;
+};
+
+export async function getProjectIdentity(permit: string): Promise<ProjectIdentity | null> {
+  const rows = await q<ProjectIdentity>(
+    `SELECT p.permit_num,
+            b.name AS building_name,
+            p.address_raw, p.city_description, p.city_sqft::float AS city_sqft,
+            COUNT(DISTINCT d.id)::int AS doc_count,
+            COUNT(DISTINCT pg.id)::int AS page_count
+     FROM v2.permit p
+     LEFT JOIN v2.permit_building pb ON pb.permit_id = p.id
+     LEFT JOIN v2.building b ON b.id = pb.building_id
+     LEFT JOIN v2.document d ON d.permit_id = p.id
+     LEFT JOIN v2.page pg ON pg.document_id = d.id
+     WHERE p.permit_num = $1
+     GROUP BY p.permit_num, b.name, p.address_raw, p.city_description, p.city_sqft
+     LIMIT 1`,
+    [permit]
+  );
+  return rows[0] ?? null;
+}
+
 export type V2PageRow = {
   page_id: number;
   pdf_page_index: number;
@@ -46,6 +79,8 @@ export type V2PageRow = {
   claimed_source: string | null;
   binding_category: string | null;
   binding_decision_id: number | null;
+  trusted: boolean;
+  trusted_decision_id: number | null;
   flags: string[];
   machine_run_id: string | null;
   machine_state: "unlabeled" | "match" | "disagree" | "audit";
@@ -186,6 +221,22 @@ export async function getBuildingDetail(permit: string) {
     }
   }
 
+  // Non-binding "trusted" breadcrumbs: the human deferred to the machine read
+  // without close review. binding=FALSE by design — this is a revisit list and
+  // a weak signal, NEVER training truth (SCHEMA_V2 zero-trusted-labels rule).
+  // A later binding Confirm on the same page overrides it in the UI.
+  const trustedDecisions = pageIds.length
+    ? await q<{ id: number; target_id: number }>(
+        `SELECT id, target_id FROM v2.human_decision
+         WHERE target_type = 'page' AND claim = 'page_review_status' AND target_id = ANY($1)
+           AND binding = FALSE AND value_json->>'status' = 'trusted'
+         ORDER BY decided_at DESC`,
+        [pageIds]
+      )
+    : [];
+  const trustedByPage = new Map<number, number>();
+  for (const d of trustedDecisions) if (!trustedByPage.has(d.target_id)) trustedByPage.set(d.target_id, d.id);
+
   const bridgeByPage = new Map<number, { runId: string; claude: V2VendorLabel | null; codex: V2VendorLabel | null }>();
   const runs = new Map<string, { pageId: number; runId: string; claude: Partial<V2VendorLabel>; codex: Partial<V2VendorLabel> }>();
   for (const o of bridgeObs) {
@@ -291,6 +342,8 @@ export async function getBuildingDetail(permit: string) {
           claimed_source: claim?.source ?? null,
           binding_category: binding?.category ?? null,
           binding_decision_id: binding?.id ?? null,
+          trusted: trustedByPage.has(p.page_id),
+          trusted_decision_id: trustedByPage.get(p.page_id) ?? null,
           flags: flagsByPage.get(p.page_id) ?? [],
           machine_run_id: machine?.runId ?? null,
           machine_state: !machine?.claude || !machine?.codex ? "unlabeled" : exactMatch ? (auditSelected ? "audit" : "match") : "disagree",
@@ -313,6 +366,40 @@ export async function getBuildingDetail(permit: string) {
 }
 
 // ---------------------------------------------------------------------
+// Documents — the full raw document set on file for a permit (READ from the
+// shared public.documents table, keyed by NOLA doc_id). The v2 build only
+// backfills the main arch plan set per permit; this exposes everything else
+// (revisions, MEP sheets, permits, inspection docs) so it can be opened.
+// ---------------------------------------------------------------------
+
+export type PermitDoc = { doc_id: string; name: string | null; is_loaded: boolean };
+
+export async function getPermitDocuments(
+  permit: string
+): Promise<{ permit: string; building: { building_name: string } | null; docs: PermitDoc[] } | null> {
+  const permitRows = await q<{ id: number }>(`SELECT id FROM v2.permit WHERE permit_num = $1`, [permit]);
+  if (!permitRows[0]) return null;
+
+  const buildingRows = await q<{ building_name: string }>(
+    `SELECT b.name AS building_name FROM v2.building b
+     JOIN v2.permit_building pb ON pb.building_id = b.id WHERE pb.permit_id = $1 LIMIT 1`,
+    [permitRows[0].id]
+  );
+
+  const docs = await q<PermitDoc>(
+    `SELECT d.doc_id::text AS doc_id, d.name,
+            EXISTS (
+              SELECT 1 FROM v2.document vd JOIN v2.permit p ON p.id = vd.permit_id
+              WHERE p.permit_num = $1 AND vd.onestop_doc_id::text = d.doc_id::text
+            ) AS is_loaded
+     FROM public.documents d WHERE d.permit_num = $1 ORDER BY d.doc_id`,
+    [permit]
+  );
+
+  return { permit, building: buildingRows[0] ?? null, docs };
+}
+
+// ---------------------------------------------------------------------
 // Rooms & Finishes (S2, design_specs/rooms_finishes_APPROVED.png)
 // ---------------------------------------------------------------------
 
@@ -329,6 +416,7 @@ export type RoomsFinishesData = {
   building: { building_name: string } | null;
   region_id: number | null;
   legacy_doc_id: number | null;
+  onestop_doc_id: string | null;
   pdf_page_index: number | null;
   sheet: string | null;
   printed_total_sf: number | null;
@@ -370,7 +458,7 @@ export async function getRoomsFinishes(permit: string): Promise<RoomsFinishesDat
   );
   const region = regionRows[0] ?? null;
   if (!region) {
-    return { permit, building, region_id: null, legacy_doc_id: null, pdf_page_index: null, sheet: null, printed_total_sf: null, extracted_total_sf: 0, rows: [] };
+    return { permit, building, region_id: null, legacy_doc_id: null, onestop_doc_id: null, pdf_page_index: null, sheet: null, printed_total_sf: null, extracted_total_sf: 0, rows: [] };
   }
 
   const extRows = await q<{ id: number; manifest_json: { sheet?: string; printed_total_sf?: number } }>(
@@ -412,6 +500,7 @@ export async function getRoomsFinishes(permit: string): Promise<RoomsFinishesDat
     building,
     region_id: region.region_id,
     legacy_doc_id: region.legacy_doc_id,
+    onestop_doc_id: region.onestop_doc_id,
     pdf_page_index: region.pdf_page_index,
     sheet: ext?.manifest_json?.sheet ?? null,
     printed_total_sf: ext?.manifest_json?.printed_total_sf ?? null,

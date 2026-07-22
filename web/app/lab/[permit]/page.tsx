@@ -10,8 +10,9 @@
 // sign-off. Projects shown by ADDRESS, never permit number.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadProjectDetail, loadReviewQueue, loadSurfaceGroups } from "@/lib/lab";
+import { loadProjectDetail, loadReviewQueue, loadSurfaceGroups, listFloorMaps } from "@/lib/lab";
 import LabReviewQueue from "@/components/LabReviewQueue";
+import LabProofGallery from "@/components/LabProofGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,14 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
   if (!detail) return notFound();
   const queue = loadReviewQueue(permit);
   const surfaces = loadSurfaceGroups(permit);
+  const floorMaps = listFloorMaps(permit);
+  const allCards = surfaces.groups?.flatMap((g) => g.cards) ?? [];
+  const needsYou = queue.items.filter((i) => !i.decision).length;
   const f = (kind: string, name = "") =>
     `/api/lab/file?permit=${permit}&kind=${kind}${name ? `&name=${name}` : ""}`;
 
   return (
-    <div className="container">
+    <div className="container lab-project">
       <div className="page-head">
         <h1>{detail.name}</h1>
         <p>
@@ -35,6 +39,11 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
 
       {/* (a) the four buttons — images for humans, PDFs one-click downloads */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+        {permit === "24-06748-RNVS" && (
+          <Link className="btn primary" href={`/lab/${permit}/learn/107`}>
+            Start here: understand Room 107
+          </Link>
+        )}
         {detail.activeDoc && (
           <a className="btn" href={f("doc", detail.activeDoc)} target="_blank">
             Full plan set (PDF)
@@ -56,13 +65,50 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
           </Link>
         )}
       </div>
+      {floorMaps.length > 0 && (
+        <section>
+          <h2 style={{ marginTop: 20 }}>Floor maps — every room, colored by status</h2>
+          <p style={{ fontSize: 13, opacity: 0.75 }}>
+            blue = done · green = measured good · orange = small nudge · red = needs fix · gray = your call.
+            Needs you: <strong>{needsYou}</strong>
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+            {floorMaps.map((m) => (
+              <a key={m} href={f("proof", m)} target="_blank">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f("proof", m)} alt={m} loading="lazy"
+                     style={{ width: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8, border: "1px solid var(--line)" }} />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {allCards.length > 0 && (
+        <section>
+          <h2 style={{ marginTop: 20 }}>All rooms (stable order — nothing ever moves)</h2>
+          <table style={{ width: "100%", fontSize: 14, borderCollapse: "collapse" }}>
+            <tbody>
+              {[...allCards].sort((a, b) => (a.identities[0] ?? "").localeCompare(b.identities[0] ?? "", undefined, { numeric: true })).map((c) => (
+                <tr key={c.id} style={{ borderBottom: "1px solid var(--line)" }}>
+                  <td style={{ padding: "6px 8px" }}><a href={`#room-${c.identities[0] ?? c.id}`}><strong>{c.identities.join("/")}</strong></a></td>
+                  <td style={{ padding: "6px 8px", opacity: 0.8 }}>{c.spaceName ?? ""}</td>
+                  <td style={{ padding: "6px 8px" }}><span className="chip">{c.decision ? c.decision.decision : c.verdict.replaceAll("_", " ")}</span></td>
+                  <td style={{ padding: "6px 8px", opacity: 0.8 }}>{c.worstDeviationIn != null ? `worst ${c.worstDeviationIn.toFixed(1)}"` : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
 
       {/* (b) REVIEW QUEUE — S5.5 measured surfaces -> S8 human decision */}
       <section>
         <h2 style={{ marginTop: 26 }}>Review queue</h2>
-        <p style={{ fontSize: 13, opacity: 0.75 }}>
-          Measured surfaces awaiting your decision. Each is a confirmed-reference call — confirm + accept, reject the
-          reference, flag for judgment, or skip with a note.
+        <p className="lab-section-intro">
+          Work from the whole-room image. Green edges passed measurement, orange edges need a small adjustment, and red
+          edges need to be redrawn. Open the edge details only when you need a closer look.
         </p>
         {queue.present ? (
           <LabReviewQueue permit={permit} items={queue.items} />
@@ -74,49 +120,49 @@ export default async function LabProject({ params }: { params: Promise<{ permit:
       {/* (c) SURFACES grouped by measured verdict */}
       <section>
         <h2 style={{ marginTop: 30 }}>Surfaces by verdict</h2>
-        <p style={{ fontSize: 13, opacity: 0.75 }}>
+        <p className="lab-section-intro">
           {surfaces.source === "gate"
             ? "Grouped by the measured verdict from the edge gate."
             : surfaces.source === "fallback"
               ? "Pre-measurement view — the edge gate has not run here; grouped by draft inspection / proposal signal."
               : "No surface artifacts yet."}
         </p>
-        {surfaces.groups.map((g) => (
-          <div key={g.verdict}>
-            <h3 style={{ marginTop: 18 }}>
-              {g.title} ({g.cards.length})
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginTop: 8 }}>
+        <div className="lab-verdict-groups">
+          {surfaces.groups.map((g) => (
+            <details key={g.verdict} className="lab-verdict-group">
+              <summary>
+                <span>{g.title}</span>
+                <span className="chip">{g.cards.length} surface{g.cards.length === 1 ? "" : "s"}</span>
+              </summary>
+              <div className="lab-surface-grid">
               {g.cards.map((c) => {
-                const proof = c.proofImages[0] ? f("proof", c.proofImages[0]) : c.overlayCode ? f("overlay", c.overlayCode) : null;
+                const primary = c.proofImages.map((name) => ({ src: f("proof", name), label: `Room ${c.identities.join(" · ")} review` }));
+                if (primary.length === 0 && c.overlayCode) primary.push({ src: f("overlay", c.overlayCode), label: `Room ${c.overlayCode} draft overlay` });
+                const details = c.edgeZooms.map((name) => ({
+                  src: f("proof", name),
+                  label: name.match(/_(e\d+|room)\.png$/)?.[1]?.replace(/^e/, "Edge ") ?? name,
+                }));
                 return (
-                  <div key={c.id} className="permit-card" style={{ cursor: "default" }}>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <article key={c.id} className="lab-surface-card">
+                    <div className="lab-surface-card-head">
                       <strong>{c.identities.join(" · ") || c.id}</strong>
-                      {c.spaceName && <span style={{ fontSize: 12, opacity: 0.7 }}>{c.spaceName}</span>}
+                      {c.spaceName && <span>{c.spaceName}</span>}
                       {c.worstDeviationIn != null && <span className="chip">worst {c.worstDeviationIn.toFixed(1)} in</span>}
                       {c.decision && <span className="chip code">{c.decision.decision}</span>}
                     </div>
-                    {c.reason && <p style={{ fontSize: 12, opacity: 0.75, margin: "6px 0 0" }}>{c.reason}</p>}
-                    {proof ? (
-                      <a href={proof} target="_blank" rel="noreferrer">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={proof}
-                          alt={`surface ${c.id}`}
-                          loading="lazy"
-                          style={{ width: "100%", marginTop: 8, borderRadius: 8, border: "1px solid var(--line)" }}
-                        />
-                      </a>
+                    {c.reason && <p>{c.reason}</p>}
+                    {primary.length > 0 ? (
+                      <LabProofGallery primary={primary} details={details} compact />
                     ) : (
                       <p style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>no proof image yet</p>
                     )}
-                  </div>
+                  </article>
                 );
               })}
-            </div>
-          </div>
-        ))}
+              </div>
+            </details>
+          ))}
+        </div>
         {surfaces.groups.length === 0 && <p style={{ opacity: 0.7 }}>Nothing to show yet.</p>}
       </section>
     </div>

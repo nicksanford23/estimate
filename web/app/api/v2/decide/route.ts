@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     value_json?: unknown;
     actor_id?: string;
     note?: string;
+    binding?: boolean;
   };
   try {
     body = await req.json();
@@ -34,6 +35,11 @@ export async function POST(req: Request) {
   const claim = typeof body.claim === "string" && body.claim ? body.claim : "page_category";
   const actor_id = typeof body.actor_id === "string" && body.actor_id ? body.actor_id : "nick";
   const note = typeof body.note === "string" ? body.note : null;
+  // binding defaults to TRUE (a real human decision = truth). A caller may pass
+  // binding:false to record a NON-binding marker — e.g. the "trusted" breadcrumb
+  // (claim='page_review_status') where the human defers to the machine without
+  // making it truth. Non-binding rows never supersede a binding decision.
+  const binding = body.binding !== false;
   // target_type/target_id generalize this route beyond 'page' (Rooms &
   // Finishes posts schedule_row_confirm against schedule_row; Geometry
   // Review posts room_verdict against polygon_prediction and
@@ -41,12 +47,20 @@ export async function POST(req: Request) {
   // append-only insert + supersession-walk, just a different target table.
   // `page_id` stays the back-compat alias for target_type='page'.
   const target_type = typeof body.target_type === "string" && body.target_type ? body.target_type : "page";
-  const page_id = body.page_id;
-  const target_id = target_type === "page" ? page_id : body.target_id;
+  const rawTarget = target_type === "page" ? body.page_id : body.target_id;
 
-  if (typeof target_id !== "number" || !Number.isInteger(target_id) || target_id <= 0) {
+  // v2 primary keys are bigint; node-postgres returns bigint columns as
+  // strings, so the browser holds (and sends) page_id/target_id as a numeric
+  // string like "224". Accept both string and number, validate as a positive
+  // integer, and keep it as a STRING for the parameterized query so large
+  // bigints never lose precision through JS number.
+  const targetStr = typeof rawTarget === "number" ? String(rawTarget) : rawTarget;
+  // /^[1-9][0-9]*$/ = a positive integer with no leading zero — rejects "0",
+  // "", negatives, and floats without needing BigInt (project target < ES2020).
+  if (typeof targetStr !== "string" || !/^[1-9][0-9]*$/.test(targetStr)) {
     return NextResponse.json({ error: "target_id (or page_id) must be a positive integer" }, { status: 400 });
   }
+  const target_id = targetStr;
 
   let valueJson: unknown;
   if (claim === "page_category") {
@@ -81,24 +95,28 @@ export async function POST(req: Request) {
   // Find any existing binding decision for the same target+claim that is not
   // already superseded — walk the supersession graph rather than trusting a
   // single "latest row" (append-only + explicit supersession, SCHEMA_V2.md §4).
-  const priorRows = await q<{ id: number }>(
-    `SELECT hd.id FROM v2.human_decision hd
-     WHERE hd.target_type = $1 AND hd.target_id = $2 AND hd.claim = $3
-       AND hd.binding = TRUE
-       AND NOT EXISTS (
-         SELECT 1 FROM v2.decision_relation dr
-         WHERE dr.relation = 'supersedes' AND dr.to_decision_id = hd.id
-       )
-     ORDER BY hd.decided_at DESC`,
-    [target_type, target_id, claim]
-  );
+  // Only binding decisions participate in supersession; a non-binding marker
+  // (trusted breadcrumb) neither supersedes nor is superseded.
+  const priorRows = binding
+    ? await q<{ id: number }>(
+        `SELECT hd.id FROM v2.human_decision hd
+         WHERE hd.target_type = $1 AND hd.target_id = $2 AND hd.claim = $3
+           AND hd.binding = TRUE
+           AND NOT EXISTS (
+             SELECT 1 FROM v2.decision_relation dr
+             WHERE dr.relation = 'supersedes' AND dr.to_decision_id = hd.id
+           )
+         ORDER BY hd.decided_at DESC`,
+        [target_type, target_id, claim]
+      )
+    : [];
 
   const insertRows = await q<{ id: number }>(
     `INSERT INTO v2.human_decision
         (target_type, target_id, claim, value_json, actor_type, actor_id, binding, taxonomy_version, note)
-     VALUES ($1, $2, $3, $4::jsonb, 'human', $5, TRUE, 'v2.0', $6)
+     VALUES ($1, $2, $3, $4::jsonb, 'human', $5, $6, 'v2.0', $7)
      RETURNING id`,
-    [target_type, target_id, claim, JSON.stringify(valueJson), actor_id, note]
+    [target_type, target_id, claim, JSON.stringify(valueJson), actor_id, binding, note]
   );
   const newDecisionId = insertRows[0].id;
 

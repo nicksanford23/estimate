@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TAXONOMY_V2 } from "@/lib/v2Taxonomy";
 import type { V2PageRow } from "@/lib/v2Db";
 import V2Tabs from "@/components/V2Tabs";
+import { displayTitle, shortDescription, type ProjectDisplayInput } from "@/lib/projectDisplay";
 
 // Page Review board — matches design_specs/page_review_APPROVED.png:
 // collapsible per-doc sections of page-card grids + a fixed right side
@@ -40,6 +41,7 @@ type DocGroup = {
 type PageState = {
   binding: string | null;
   decisionId: number | null;
+  trusted: boolean;
   flags: string[];
 };
 
@@ -57,10 +59,10 @@ function caption(page: V2PageRow, idx: number) {
   return `${idx + 1}. ${title || `PDF p.${page.pdf_page_index}`}`;
 }
 
-export default function V2ReviewBoard({ permit, building, docs }: { permit: string; building: { building_name: string } | null; docs: DocGroup[] }) {
+export default function V2ReviewBoard({ permit, building, docs, identity }: { permit: string; building: { building_name: string } | null; docs: DocGroup[]; identity: ProjectDisplayInput | null }) {
   const flat = useMemo(() => docs.flatMap((d) => d.pages), [docs]);
   const [state, setState] = useState<Map<number, PageState>>(
-    () => new Map(flat.map((p) => [p.page_id, { binding: p.binding_category, decisionId: p.binding_decision_id, flags: p.flags }]))
+    () => new Map(flat.map((p) => [p.page_id, { binding: p.binding_category, decisionId: p.binding_decision_id, trusted: p.trusted, flags: p.flags }]))
   );
   const [selectedId, setSelectedId] = useState<number | null>(flat[0]?.page_id ?? null);
   const [busy, setBusy] = useState(false);
@@ -77,8 +79,24 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
     });
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Prefetch the neighbouring pages' full panel images so stepping through the
+  // set is instant instead of waiting on a fresh round-trip each time (the
+  // Codespaces proxy adds real latency per uncached image).
+  useEffect(() => {
+    const idx = flat.findIndex((p) => p.page_id === selectedId);
+    for (const p of [flat[idx + 1], flat[idx - 1], flat[idx + 2]]) {
+      if (!p) continue;
+      const img = new window.Image();
+      img.src = `/api/opspage/${p.onestop_doc_id}/${p.pdf_page_index}?w=1100`;
+    }
+  }, [selectedId, flat]);
+
   const confirmedCount = Array.from(state.values()).filter((s) => s.binding).length;
+  const trustedCount = Array.from(state.values()).filter((s) => !s.binding && s.trusted).length;
   const totalCount = flat.length;
+  const disagreementsLeft = flat.filter(
+    (p) => p.machine_state === "disagree" && !state.get(p.page_id)?.binding && !state.get(p.page_id)?.trusted
+  ).length;
 
   async function postDecide(page_id: number, body: Record<string, unknown>) {
     const res = await fetch("/api/v2/decide", {
@@ -127,15 +145,72 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
     }
   }
 
-  const goNextFlagged = useCallback(() => {
-    const idx = flat.findIndex((p) => p.page_id === selectedId);
-    for (let i = idx + 1; i < flat.length; i++) {
-      if (!state.get(flat[i].page_id)?.binding) {
-        setSelectedId(flat[i].page_id);
-        return;
+  // A page is "acted on" once it is confirmed (binding truth) OR trusted
+  // (non-binding breadcrumb). Both nav buttons skip acted-on pages.
+  const goNext = useCallback(
+    (pred: (page: V2PageRow, s: PageState | undefined) => boolean) => {
+      const idx = flat.findIndex((p) => p.page_id === selectedId);
+      for (let i = idx + 1; i < flat.length; i++) {
+        const s = state.get(flat[i].page_id);
+        if (!s?.binding && !s?.trusted && pred(flat[i], s)) {
+          setSelectedId(flat[i].page_id);
+          return true;
+        }
       }
+      return false;
+    },
+    [flat, selectedId, state]
+  );
+  const goNextUnreviewed = useCallback(() => goNext(() => true), [goNext]);
+  const goNextDisagreement = useCallback(() => goNext((p) => p.machine_state === "disagree"), [goNext]);
+
+  // "Trust the machine" — record a NON-binding breadcrumb (never truth) and
+  // advance. Reversible in spirit: opening the page later and Confirming writes
+  // real truth that overrides this in the UI.
+  async function trustCurrent() {
+    if (!selectedPage) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await postDecide(selectedPage.page_id, { claim: "page_review_status", binding: false, value_json: { status: "trusted" } });
+      setState((prev) => {
+        const m = new Map(prev);
+        m.set(selectedPage.page_id, { ...m.get(selectedPage.page_id)!, trusted: true });
+        return m;
+      });
+      goNextUnreviewed();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "trust failed");
+    } finally {
+      setBusy(false);
     }
-  }, [flat, selectedId, state]);
+  }
+
+  // Bulk: trust every machine-agreement page not already acted on, so the human
+  // is left with only the disagreements. Agreements = both vendors matched
+  // (machine_state match|audit).
+  const agreementTargets = flat.filter(
+    (p) => (p.machine_state === "match" || p.machine_state === "audit") && !state.get(p.page_id)?.binding && !state.get(p.page_id)?.trusted
+  );
+  async function trustAllAgreements() {
+    if (!agreementTargets.length) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await Promise.all(
+        agreementTargets.map((p) => postDecide(p.page_id, { claim: "page_review_status", binding: false, value_json: { status: "trusted" } }))
+      );
+      setState((prev) => {
+        const m = new Map(prev);
+        agreementTargets.forEach((p) => m.set(p.page_id, { ...m.get(p.page_id)!, trusted: true }));
+        return m;
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "bulk trust failed");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const moveSelection = useCallback(
     (delta: number) => {
@@ -153,7 +228,9 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
       if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); moveSelection(1); }
       else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); moveSelection(-1); }
       else if (e.key === "Enter") { e.preventDefault(); confirmCategory(); }
-      else if (e.key === "f" || e.key === "F") { e.preventDefault(); goNextFlagged(); }
+      else if (e.key === "t" || e.key === "T") { e.preventDefault(); trustCurrent(); }
+      else if (e.key === "d" || e.key === "D") { e.preventDefault(); goNextDisagreement(); }
+      else if (e.key === "f" || e.key === "F") { e.preventDefault(); goNextUnreviewed(); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -162,16 +239,22 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
   return (
     <div className="v2board">
       <div className="v2board-main">
-        <div className="page-head" style={{ marginBottom: 8 }}>
-          <Link href="/v2" style={{ fontSize: 13 }}>&larr; Pilot Buildings</Link>
-        </div>
-        <div className="page-head">
-          <h1 style={{ marginBottom: 2 }}>{building?.building_name ?? permit}</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{permit}</span>
+        <div className="page-head" style={{ marginBottom: 0 }}>
+          <Link href="/v2" style={{ fontSize: 13 }}>&larr; Projects</Link>
+          <h1 style={{ margin: "6px 0 2px" }}>{identity ? displayTitle(identity) : building?.building_name ?? permit}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {identity && shortDescription(identity.city_description) && (
+              <span style={{ color: "var(--muted)", fontSize: 13 }}>{shortDescription(identity.city_description)}</span>
+            )}
+            <span className="proj-permit" style={{ fontSize: 12 }}>Permit {permit}</span>
           </div>
         </div>
-        <V2Tabs permit={permit} active="pages" />
+        <V2Tabs permit={permit} active="planset" />
+
+        <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 0 4px" }}>
+          Sheets in the active plan set, grouped by document. Confirm each page&rsquo;s role, then see the full{" "}
+          <Link href={`/v2/b/${permit}/docs`} style={{ color: "var(--accent-ink)" }}>document list</Link>.
+        </p>
 
         {docs.map((doc) => {
           const confirmed = doc.pages.filter((p) => state.get(p.page_id)?.binding).length;
@@ -186,7 +269,7 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
                   const s = state.get(page.page_id)!;
                   const isSelected = page.page_id === selectedId;
                   const thumbSrc = `/api/opspage/${page.onestop_doc_id}/${page.pdf_page_index}?w=560`;
-                  const statusLabel = s.binding ? "confirmed" : page.machine_state;
+                  const statusLabel = s.binding ? "confirmed" : s.trusted ? "trusted" : page.machine_state;
                   const machineFlags = page.machine_state === "match" || page.machine_state === "audit" ? page.claude_label?.flags ?? [] : [];
                   const displayFlags = s.flags.length ? s.flags : machineFlags;
                   const shownFlags = displayFlags.slice(0, 2);
@@ -211,7 +294,16 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
                       </div>
                       <div className="v2card-cap">{caption(page, i)}</div>
                       <div className="v2card-chips">
-                        <span className="chip" style={s.binding ? { borderStyle: "solid", borderColor: "var(--good)", color: "var(--good)" } : { borderStyle: "dashed" }}>
+                        <span
+                          className="chip"
+                          style={
+                            s.binding
+                              ? { borderStyle: "solid", borderColor: "var(--good)", color: "var(--good)" }
+                              : s.trusted
+                                ? { borderStyle: "solid", borderColor: "var(--muted)", color: "var(--muted)" }
+                                : { borderStyle: "dashed" }
+                          }
+                        >
                           {displayCategory ?? (page.machine_state === "disagree" ? "review disagreement" : "unlabeled")}
                         </span>
                         {shownFlags.map((f) => (
@@ -229,8 +321,24 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
         {docs.length === 0 && <p style={{ color: "var(--muted)" }}>No documents backfilled for this permit.</p>}
 
         <div className="v2progress">
-          <span>{confirmedCount} of {totalCount} pages confirmed</span>
-          <div className="v2progress-bar"><div className="v2progress-fill" style={{ width: totalCount ? `${(100 * confirmedCount) / totalCount}%` : "0%" }} /></div>
+          <span>{confirmedCount} confirmed · {trustedCount} trusted · {totalCount} pages</span>
+          <div className="v2progress-bar"><div className="v2progress-fill" style={{ width: totalCount ? `${(100 * (confirmedCount + trustedCount)) / totalCount}%` : "0%" }} /></div>
+          <div className="v2progress-actions">
+            {disagreementsLeft > 0 && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => { if (!goNextDisagreement()) goNext(() => true); }}
+              >
+                Go to next disagreement ({disagreementsLeft}) &rarr;
+              </button>
+            )}
+            {agreementTargets.length > 0 && (
+              <button type="button" className="btn" disabled={busy} onClick={trustAllAgreements}>
+                Trust all {agreementTargets.length} machine agreement{agreementTargets.length === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -243,30 +351,61 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
           {(
           <>
             <div className="v2panel-img">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`/api/opspage/${selectedPage.onestop_doc_id}/${selectedPage.pdf_page_index}?w=900`} alt="selected page" />
+              <a
+                href={`/api/opspage/${selectedPage.onestop_doc_id}/${selectedPage.pdf_page_index}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="v2img-open"
+                title="Open the full-resolution page in a new tab (pinch to zoom)"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/opspage/${selectedPage.onestop_doc_id}/${selectedPage.pdf_page_index}?w=1100`} alt="selected page" />
+                <span className="v2img-openbtn">&#x26F6; Open full image</span>
+              </a>
             </div>
             <div className="v2panel-body">
               <div className="eyebrow" style={{ marginBottom: 6 }}>Machine comparison</div>
               {selectedPage.claude_label && selectedPage.codex_label ? (
-                <div className="v2compare">
-                  <div className="v2compare-row">
-                    <strong>Claude</strong>
-                    <span className={selectedPage.claude_label.category === selectedPage.codex_label.category ? "v2agree" : "v2disagree"}>{selectedPage.claude_label.category}</span>
-                    <small>{Math.round((selectedPage.claude_label.confidence ?? 0) * 100)}%</small>
-                  </div>
-                  <div className="v2compare-row">
-                    <strong>Codex</strong>
-                    <span className={selectedPage.claude_label.category === selectedPage.codex_label.category ? "v2agree" : "v2disagree"}>{selectedPage.codex_label.category}</span>
-                    <small>{Math.round((selectedPage.codex_label.confidence ?? 0) * 100)}% · {selectedPage.codex_label.reasoning_effort ?? "configured"}</small>
-                  </div>
-                  {FLAGS.filter((flag) => selectedPage.claude_label?.flags.includes(flag.key) !== selectedPage.codex_label?.flags.includes(flag.key)).map((flag) => (
-                    <div className="v2claim-diff" key={flag.key}>
-                      {flag.label}: Claude {selectedPage.claude_label?.flags.includes(flag.key) ? "yes" : "no"} · Codex {selectedPage.codex_label?.flags.includes(flag.key) ? "yes" : "no"}
+                (() => {
+                  const claude = selectedPage.claude_label;
+                  const codex = selectedPage.codex_label;
+                  const catAgree = claude.category === codex.category;
+                  const flagLabel = (k: string) => FLAGS.find((x) => x.key === k)?.label ?? k;
+                  const vendorRow = (name: "Claude" | "Codex", self: typeof claude, peer: typeof claude) => (
+                    <div className={`v2vendor v2vendor-${name.toLowerCase()}`}>
+                      <div className="v2vendor-head">
+                        <strong className="v2vendor-name">{name}</strong>
+                        <span className={catAgree ? "" : "v2disagree"}>{self.category}</span>
+                        <small>{Math.round((self.confidence ?? 0) * 100)}%{name === "Codex" ? ` · ${self.reasoning_effort ?? "configured"}` : ""}</small>
+                      </div>
+                      <div className="v2vendor-flags">
+                        {self.flags.length === 0 ? (
+                          <span className="v2flagchip v2flagchip-none">no flags</span>
+                        ) : (
+                          self.flags.map((k) => {
+                            const shared = peer.flags.includes(k);
+                            return (
+                              <span
+                                key={k}
+                                className={`v2flagchip${shared ? "" : " v2flagchip-diff"}`}
+                                title={shared ? undefined : `only ${name} flagged this`}
+                              >
+                                {flagLabel(k)}
+                              </span>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  ))}
-                  <div className="v2micro">{selectedPage.machine_state === "audit" ? "machine match · selected for your audit" : selectedPage.machine_state === "match" ? "exact machine match · not human truth" : "machine disagreement · your review required"}</div>
-                </div>
+                  );
+                  return (
+                    <div className="v2compare">
+                      {vendorRow("Claude", claude, codex)}
+                      {vendorRow("Codex", codex, claude)}
+                      <div className="v2micro">{selectedPage.machine_state === "audit" ? "machine match · selected for your audit" : selectedPage.machine_state === "match" ? "exact machine match · not human truth" : "machine disagreement · your review required"}</div>
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="v2empty-machine">No pilot label run yet. Legacy suggestions are quarantined and hidden.</div>
               )}
@@ -310,10 +449,16 @@ export default function V2ReviewBoard({ permit, building, docs }: { permit: stri
                 <button type="button" className="btn primary" disabled={!draftCategory || busy} onClick={confirmCategory}>
                   {busy ? "Confirming…" : "Confirm (Enter)"}
                 </button>
-                <button type="button" className="btn" onClick={goNextFlagged}>Next flagged &rarr;</button>
+                <button type="button" className="btn" disabled={busy} onClick={trustCurrent} title="Defer to the machine here (not saved as truth) and move on">
+                  {selectedState?.trusted ? "Trusted ✓" : "Trust machine (T)"}
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button type="button" className="btn" onClick={goNextDisagreement}>Next disagreement (D) &rarr;</button>
+                <button type="button" className="btn" onClick={goNextUnreviewed}>Next unreviewed (F) &rarr;</button>
               </div>
               {err && <div style={{ color: "var(--bad)", fontSize: 12, marginTop: 6 }}>{err}</div>}
-              <div className="v2micro">your decision outranks machine suggestions</div>
+              <div className="v2micro">Confirm = your truth. Trust = deferred to the machine, not truth — revisit anytime.</div>
             </div>
           </>
           )}

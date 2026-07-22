@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import V2Tabs from "@/components/V2Tabs";
 import type { GeometryReviewData } from "@/lib/v2Db";
 
 // Geometry Review — matches design_specs/geometry_review_APPROVED.png:
@@ -89,7 +88,10 @@ export default function GeometryReviewBoard({ data }: Props) {
         <div className="v2board-main">
           <div className="page-head"><a href={`/v2/b/${data?.permit}`} style={{ fontSize: 13 }}>&larr; {data?.building?.building_name ?? data?.permit}</a></div>
           <h1>{data?.building?.building_name ?? data?.permit}</h1>
-          <V2Tabs permit={data?.permit ?? ""} active="geometry" />
+          <div className="legacy-banner">
+            Internal / legacy geometry diagnostic — not part of normal navigation. The product path is now{" "}
+            <a href={`/v2/b/${data?.permit}/floor-areas`}>Floor Areas</a>.
+          </div>
           <p style={{ color: "var(--muted)", marginTop: 24 }}>No geometry runs yet for this building.</p>
         </div>
       </div>
@@ -173,7 +175,12 @@ export default function GeometryReviewBoard({ data }: Props) {
         <h1 style={{ marginBottom: 2 }}>{data!.building?.building_name ?? data!.permit}</h1>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--muted)" }}>{data!.permit}</span>
       </div>
-      <div style={{ padding: "0 18px" }}><V2Tabs permit={data!.permit} active="geometry" /></div>
+      <div style={{ padding: "0 18px" }}>
+        <div className="legacy-banner">
+          Internal / legacy geometry diagnostic — schedule-area agreement here never approves geometry. The product
+          path is now <a href={`/v2/b/${data!.permit}/floor-areas`}>Floor Areas</a>.
+        </div>
+      </div>
 
       {runs.length > 1 && (
         <div style={{ padding: "8px 18px", display: "flex", gap: 6 }}>

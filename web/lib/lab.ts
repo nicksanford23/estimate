@@ -152,6 +152,16 @@ export function gateProofDirs(permit: string): string[] {
   ];
 }
 
+// Status-colored floor maps rendered by scripts/render_floor_maps.py.
+export function listFloorMaps(permit: string): string[] {
+  const out: string[] = [];
+  for (const dir of gateProofDirs(permit)) {
+    if (!fs.existsSync(dir)) continue;
+    for (const f of fs.readdirSync(dir)) if (/^floormap_p[0-9]+\.png$/.test(f) && !out.includes(f)) out.push(f);
+  }
+  return out.sort();
+}
+
 export function stageStrip(permit: string): StageChip[] {
   const dir = projDir(permit);
   const kept = keptPageCount(permit);
@@ -253,6 +263,7 @@ export interface QueueItem {
   worstDeviationIn: number | null; // worst deviation in inches
   reason: string | null; // one-line reason
   proofImages: string[]; // proof filenames (basename), served via ?kind=proof
+  edgeZooms: string[];   // raw per-edge strips, click-through zooms only
   referenceConfirmed: boolean | null;
   decision: S8Decision | null; // latest human decision, if any
 }
@@ -274,6 +285,31 @@ function asCodes(v: unknown): string[] {
     }
   }
   return out;
+}
+
+// Give the reviewer one readable, whole-room image first. The measurement
+// pipeline also emits narrow per-edge crops; those are useful evidence, but
+// they belong behind explicit detail controls instead of competing for card
+// width with the room image.
+function reviewProofBundle(
+  permit: string,
+  identityCodes: string[],
+  id: string,
+  rawProofs: string[],
+): { proofImages: string[]; edgeZooms: string[] } {
+  const proofs = [...new Set(rawProofs)];
+  const code = identityCodes[0] ?? id.replace(/^S-/, "");
+  for (const dir of gateProofDirs(permit)) {
+    if (code && fs.existsSync(path.join(dir, `review_${code}.png`))) {
+      return { proofImages: [`review_${code}.png`], edgeZooms: proofs };
+    }
+  }
+
+  const roomProof = proofs.find((name) => /_room\.png$/.test(name));
+  if (roomProof) {
+    return { proofImages: [roomProof], edgeZooms: proofs.filter((name) => name !== roomProof) };
+  }
+  return { proofImages: proofs.slice(0, 1), edgeZooms: proofs.slice(1) };
 }
 
 // Tolerant parse: QUEUE.json shape is being finalized by a parallel agent, so we
@@ -302,16 +338,28 @@ export function loadReviewQueue(permit: string): { present: boolean; items: Queu
       if (Array.isArray(proofRaw)) for (const p of proofRaw) { const b = basename(p); if (b) proofs.push(b); }
       else { const b = basename(proofRaw); if (b) proofs.push(b); }
       const rb = basename(e.room_proof_image);
-      if (rb && !proofs.includes(rb)) proofs.unshift(rb);
-      const dev = e.worst_deviation_in ?? e.max_deviation_in ?? e.worst_deviation ?? null;
+      if (rb && !proofs.includes(rb)) proofs.push(rb);
+      const bundle = reviewProofBundle(permit, identities, id, proofs);
+      const dev = e.worst_edge_dev_in ?? e.worst_deviation_in ?? e.max_deviation_in ?? e.worst_deviation ?? null;
+      const spaceNames = Array.isArray(e.space_names) ? e.space_names : [];
+      const firstSpaceName = spaceNames.find((name): name is string => typeof name === "string");
       return {
         id,
         identities: identities.length ? identities : id ? [id] : [],
-        identityLabel: typeof e.space_name === "string" ? e.space_name : typeof e.name === "string" ? e.name : null,
+        identityLabel: typeof e.space_name === "string" ? e.space_name : firstSpaceName ?? (typeof e.name === "string" ? e.name : null),
         verdict: String(e.verdict ?? e.measured_verdict ?? "unknown"),
         worstDeviationIn: typeof dev === "number" ? dev : null,
-        reason: typeof e.reason === "string" ? e.reason : typeof e.one_line === "string" ? e.one_line : typeof e.rationale === "string" ? e.rationale : null,
-        proofImages: proofs,
+        reason: typeof e.reason === "string"
+          ? e.reason
+          : typeof e.one_line_reason === "string"
+            ? e.one_line_reason
+            : typeof e.one_line === "string"
+              ? e.one_line
+              : typeof e.rationale === "string"
+                ? e.rationale
+                : null,
+        proofImages: bundle.proofImages,
+        edgeZooms: bundle.edgeZooms,
         referenceConfirmed: typeof e.reference_confirmed === "boolean" ? e.reference_confirmed : null,
         decision: id ? decisions[id] ?? null : null,
       };
@@ -333,6 +381,7 @@ export interface SurfaceCard {
   worstDeviationIn: number | null;
   reason: string | null;
   proofImages: string[]; // basenames served via ?kind=proof
+  edgeZooms: string[]; // secondary room / edge evidence
   overlayCode: string | null; // fallback: claude_vision overlay code (?kind=overlay)
   decision: S8Decision | null;
 }
@@ -388,6 +437,7 @@ interface GateEdge {
   proof_image?: string;
 }
 interface GateSurface {
+  code?: string;
   space_name?: string;
   verdict?: string;
   identities?: unknown;
@@ -429,7 +479,11 @@ export function loadSurfaceGroups(permit: string): SurfacesResult {
   const decisions = latestDecisions(permit);
   const gatePath = gateResultsPath(permit);
   if (gatePath) {
-    const gate = readJson<Record<string, GateSurface>>(gatePath);
+    const gateEnvelope = readJson<Record<string, unknown>>(gatePath);
+    const nestedSurfaces = gateEnvelope?.surfaces;
+    const gate = nestedSurfaces && typeof nestedSurfaces === "object" && !Array.isArray(nestedSurfaces)
+      ? nestedSurfaces as Record<string, GateSurface>
+      : gateEnvelope as Record<string, GateSurface> | null;
     const membership = surfaceMembership(permit);
     const cards: SurfaceCard[] = [];
     if (gate) {
@@ -448,14 +502,18 @@ export function loadSurfaceGroups(permit: string): SurfacesResult {
         const rb = basename(s.room_proof_image);
         if (rb) proofs.push(rb);
         for (const e of edges) { const b = basename(e.proof_image); if (b) proofs.push(b); }
+        const ownIdentities = asCodes(s.identities);
+        const identities = ownIdentities.length ? ownIdentities : membership[id]?.length ? membership[id] : [s.code ?? id.replace(/^S-/, "")];
+        const bundle = reviewProofBundle(permit, identities, id, proofs);
         cards.push({
           id,
-          identities: membership[id]?.length ? membership[id] : [id],
+          identities,
           spaceName: typeof s.space_name === "string" ? s.space_name : null,
           verdict,
           worstDeviationIn: worst,
           reason: typeof s.reason === "string" ? s.reason : typeof s.note === "string" ? s.note : null,
-          proofImages: proofs,
+          proofImages: bundle.proofImages,
+          edgeZooms: bundle.edgeZooms,
           overlayCode: null,
           decision: decisions[id] ?? null,
         });
@@ -525,6 +583,7 @@ function fallbackCards(permit: string, decisions: Record<string, S8Decision>): S
       worstDeviationIn: null,
       reason: inspVerdict ? `edge-inspection: ${inspVerdict}` : p.outcome_suggestion ?? null,
       proofImages: [],
+      edgeZooms: [],
       overlayCode: overlay,
       decision: decisions[taskId] ?? null,
     });
